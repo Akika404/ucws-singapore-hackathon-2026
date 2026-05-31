@@ -63,6 +63,10 @@ export default {
     addItem: '+ Add budget item',
     customItem: 'Custom new item',
   },
+  status: {
+    loading: 'AI is generating the opening cost estimate...',
+    error: 'Opening cost API request failed: {message}',
+  },
   cfoPre: 'The costs above are a ',
   cfoEmph: 'simulation',
   cfoPost: ' based on an industry matrix. Actual spend varies a lot by city, vendor and negotiation; verify item by item and adjust.',

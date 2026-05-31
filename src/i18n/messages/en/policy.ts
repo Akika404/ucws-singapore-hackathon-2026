@@ -51,6 +51,10 @@ export default {
     title: 'No matching policies under the current filters',
     desc: 'Try relaxing the priority or switching the policy category, or adjust company parameters in the sandbox to unlock more policies.',
   },
+  status: {
+    loading: 'AI is searching support policies...',
+    error: 'Support policy API request failed: {message}',
+  },
   card: {
     maxPrefix: 'Max estimated',
     perUnit: '/ {unit}',

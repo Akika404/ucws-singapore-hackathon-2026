@@ -63,6 +63,10 @@ export default {
     addItem: '+ 添加细分预算科目',
     customItem: '自定义新增科目',
   },
+  status: {
+    loading: 'AI 正在生成开业成本预估...',
+    error: '开业成本接口请求失败：{message}',
+  },
   cfoPre: '以上成本为基于行业矩阵的',
   cfoEmph: '模拟推演',
   cfoPost: '，实际支出因城市、供应商及谈判能力差异较大，建议逐项询价后修正。',

@@ -2,6 +2,7 @@
 import { ref, computed, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { sharedFormData } from '../store'
+import { apiFetch } from '../api/client'
 
 const { t, tm, locale } = useI18n()
 
@@ -41,37 +42,42 @@ const priorityStyles: Record<Priority, { weight: number; color: string; bg: stri
 }
 const priorityLabel = (p: Priority) => t('policy.priority.' + p)
 
-// 政策记录：仅保留逻辑/数值字段；展示字段（title/desc/department/cycle/valueUnit/字符串型 maxValue）按 id 查 t('policy.db.<id>.*')
+// 政策记录由后端 AI 生成，前端仅负责筛选、排序和展示
 interface PolicyDef {
   id: string
   category: Exclude<CategoryKey, 'all'>
-  maxValue: number | 'maxValue'  // 数字→直接展示；'maxValue'→查 t('policy.db.<id>.maxValue')
-  typeValue: number
-  prob: number
+  categoryName: string
+  title: string
+  description: string
+  department: string
+  benefit: { displayPrefix: string; displayValue: string; amount: number; unit: string }
+  probability: number
   deadlineDays: number
   priority: Priority
-  reqProv: string
-  reqSizeMin: number
-  reqCapMin: number
-  reqInd: 'all' | number[]
+  priorityLabel: string
+  cycle: string
+  reasons: string[]
+  materials: string[]
+  applyAction: { label: string; url: string }
 }
 
-const policyDatabase: PolicyDef[] = [
-  { id: 'P-FUND-01', category: 'funding', maxValue: 8000, typeValue: 8000, prob: 95, deadlineDays: 120, priority: 'P1', reqProv: 'shanghai', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
-  { id: 'P-FUND-02', category: 'funding', maxValue: 50000, typeValue: 50000, prob: 99, deadlineDays: 15, priority: 'P0', reqProv: 'all', reqSizeMin: 15, reqCapMin: 0, reqInd: 'all' },
-  { id: 'P-SPACE-01', category: 'space', maxValue: 30000, typeValue: 30000, prob: 80, deadlineDays: 60, priority: 'P1', reqProv: 'all', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
-  { id: 'P-LOAN-01', category: 'loan', maxValue: 3000000, typeValue: 300000, prob: 65, deadlineDays: 365, priority: 'P2', reqProv: 'all', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
-  { id: 'P-TAX-01', category: 'tax', maxValue: 'maxValue', typeValue: 150000, prob: 100, deadlineDays: 45, priority: 'P1', reqProv: 'all', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
-  { id: 'P-TAX-02', category: 'tax', maxValue: 'maxValue', typeValue: 200000, prob: 90, deadlineDays: 365, priority: 'P2', reqProv: 'shanghai', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
-  { id: 'P-TALENT-01', category: 'talent', maxValue: 'maxValue', typeValue: 0, prob: 50, deadlineDays: 20, priority: 'P0', reqProv: 'shanghai', reqSizeMin: 5, reqCapMin: 100, reqInd: [0, 1, 2] },
-]
+interface SupportPoliciesResponse {
+  summary: { matchedCount: number; maxBenefit: number; conclusion: string }
+  policies: PolicyDef[]
+  tips: string[]
+}
 
-// 展示字段访问器（按 id）
-const pTitle = (p: PolicyDef) => t(`policy.db.${p.id}.title`)
-const pDesc = (p: PolicyDef) => t(`policy.db.${p.id}.desc`)
-const pDept = (p: PolicyDef) => t(`policy.db.${p.id}.department`)
-const pCycle = (p: PolicyDef) => t(`policy.db.${p.id}.cycle`)
-const pUnit = (p: PolicyDef) => t(`policy.db.${p.id}.unit`)
+const policyDatabase = ref<PolicyDef[]>([])
+const policySummary = ref('')
+const policyTips = ref<string[]>([])
+const loadingPolicies = ref(false)
+const policyError = ref('')
+
+const pTitle = (p: PolicyDef) => p.title
+const pDesc = (p: PolicyDef) => p.description
+const pDept = (p: PolicyDef) => p.department
+const pCycle = (p: PolicyDef) => p.cycle
+const pUnit = (p: PolicyDef) => p.benefit?.unit || ''
 
 /* ---------------- 表单状态 + 联动 ---------------- */
 
@@ -169,38 +175,68 @@ const currentPriority = ref<PriorityFilter>('ALL')
 type SortMethod = 'priority' | 'amountDesc' | 'probDesc' | 'deadlineAsc'
 const currentSort = ref<SortMethod>('priority')
 
-interface MatchedPolicy extends PolicyDef {
-  reasons: string[]
+function currentFormData() {
+  const f = sharedFormData.value
+  if (f) return f
+  return {
+    business: industries.value[formState.industryIdx] ?? '',
+    people: formState.teamSize,
+    namePref: formState.namePref,
+    name: previewName.value,
+    capital: `认缴金额：${formState.capital} 万元`,
+    address: provinceLabel(formState.province),
+  }
 }
 
-const matchedPolicies = computed<MatchedPolicy[]>(() => {
-  const { industryIdx, province, teamSize, capital } = formState
-  const industryName = industries.value[industryIdx] ?? ''
+function applyPolicyResponse(data: SupportPoliciesResponse) {
+  policyDatabase.value = data.policies || []
+  policySummary.value = data.summary?.conclusion || ''
+  policyTips.value = data.tips || []
+}
 
-  const list: MatchedPolicy[] = []
-  policyDatabase.forEach(policy => {
-    if (policy.reqProv !== 'all' && policy.reqProv !== province) return
-    if (teamSize < policy.reqSizeMin) return
-    if (capital < policy.reqCapMin) return
-    if (policy.reqInd !== 'all' && !policy.reqInd.includes(industryIdx)) return
+let policyRequestSeq = 0
+async function fetchSupportPolicies() {
+  const seq = ++policyRequestSeq
+  loadingPolicies.value = true
+  policyError.value = ''
+  try {
+    const res = await apiFetch('/api/support-policies/search', {
+      method: 'POST',
+      body: JSON.stringify({ formData: currentFormData() }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json() as SupportPoliciesResponse
+    if (seq === policyRequestSeq) applyPolicyResponse(data)
+  } catch (err) {
+    if (seq === policyRequestSeq) {
+      policyError.value = err instanceof Error ? err.message : String(err)
+    }
+  } finally {
+    if (seq === policyRequestSeq) loadingPolicies.value = false
+  }
+}
+
+let policyFetchDebounce: number | null = null
+function schedulePolicyFetch() {
+  if (policyFetchDebounce) clearTimeout(policyFetchDebounce)
+  policyFetchDebounce = window.setTimeout(fetchSupportPolicies, 350)
+}
+
+watch(() => ({ ...formState, lang: locale.value }), schedulePolicyFetch, { immediate: true })
+
+const matchedPolicies = computed<PolicyDef[]>(() => {
+  const list: PolicyDef[] = []
+  policyDatabase.value.forEach(policy => {
     if (currentCategory.value !== 'all' && policy.category !== currentCategory.value) return
     if (currentPriority.value !== 'ALL' && policy.priority !== currentPriority.value) return
-
-    const reasons: string[] = []
-    if (policy.reqProv !== 'all') reasons.push(t('policy.reasons.local', { province: provinceLabel(province) }))
-    if (policy.reqSizeMin > 1)    reasons.push(t('policy.reasons.size', { teamSize, min: policy.reqSizeMin }))
-    if (policy.reqCapMin > 0)     reasons.push(t('policy.reasons.capital', { capital, min: policy.reqCapMin }))
-    if (policy.reqInd !== 'all')  reasons.push(t('policy.reasons.industry', { industry: industryName }))
-    if (reasons.length === 0)     reasons.push(t('policy.reasons.universal'))
-
-    list.push({ ...policy, reasons })
+    list.push(policy)
   })
 
   list.sort((a, b) => {
     switch (currentSort.value) {
       case 'priority':    return priorityStyles[b.priority].weight - priorityStyles[a.priority].weight
-      case 'amountDesc':  return (b.typeValue || 0) - (a.typeValue || 0)
-      case 'probDesc':    return b.prob - a.prob
+      case 'amountDesc':  return (b.benefit?.amount || 0) - (a.benefit?.amount || 0)
+      case 'probDesc':    return b.probability - a.probability
       case 'deadlineAsc': return a.deadlineDays - b.deadlineDays
     }
   })
@@ -209,7 +245,7 @@ const matchedPolicies = computed<MatchedPolicy[]>(() => {
 })
 
 const matchedSum = computed(() =>
-  matchedPolicies.value.reduce((s, p) => s + (typeof p.typeValue === 'number' ? p.typeValue : 0), 0),
+  matchedPolicies.value.reduce((s, p) => s + (Number(p.benefit?.amount) || 0), 0),
 )
 const localeTag = computed(() => (locale.value === 'zh' ? 'zh-CN' : 'en-US'))
 
@@ -218,10 +254,10 @@ const previewName = computed(() => t('policy.previewName', { name: formState.nam
 function setCategory(c: CategoryKey) { currentCategory.value = c }
 
 function formatValue(p: PolicyDef): { prefix: string; value: string } {
-  if (typeof p.maxValue === 'number') {
-    return { prefix: t('policy.card.maxPrefix'), value: `¥ ${p.maxValue.toLocaleString(localeTag.value)}` }
+  return {
+    prefix: p.benefit?.displayPrefix || '',
+    value: p.benefit?.displayValue || `¥ ${(p.benefit?.amount || 0).toLocaleString(localeTag.value)}`,
   }
-  return { prefix: '', value: t(`policy.db.${p.id}.maxValue`) }
 }
 
 function probColor(prob: number): string {
@@ -232,6 +268,15 @@ function probColor(prob: number): string {
 
 function deadlineColor(days: number): string {
   return days <= 30 ? '#dc2626' : '#334155'
+}
+
+function policyApplyUrl(policy: PolicyDef): string {
+  const url = policy.applyAction?.url?.trim() || ''
+  return /^https?:\/\//i.test(url) ? url : ''
+}
+
+function policyApplyLabel(policy: PolicyDef): string {
+  return policy.applyAction?.label || t('policy.card.apply')
 }
 </script>
 
@@ -348,6 +393,11 @@ function deadlineColor(days: number): string {
       </div>
     </div>
 
+    <div v-if="loadingPolicies || policyError" class="ready-strip">
+      <span class="ready-text">{{ loadingPolicies ? t('policy.status.loading') : t('policy.status.error', { message: policyError }) }}</span>
+      <span v-if="loadingPolicies" class="ready-pulse"><span /><span /><span /></span>
+    </div>
+
     <!-- 分类与控制台 -->
     <div class="control-bar">
       <div class="tab-group">
@@ -418,7 +468,7 @@ function deadlineColor(days: number): string {
             </div>
           </div>
           <div class="pc-board-bottom">
-            <span>{{ t('policy.card.prob') }}<b :style="{ color: probColor(policy.prob) }">{{ policy.prob }}%</b></span>
+            <span>{{ t('policy.card.prob') }}<b :style="{ color: probColor(policy.probability) }">{{ policy.probability }}%</b></span>
             <span class="sep">·</span>
             <span>{{ t('policy.card.cycle') }}<b>{{ pCycle(policy) }}</b></span>
           </div>
@@ -439,9 +489,21 @@ function deadlineColor(days: number): string {
           <div class="pc-dept" :style="{ color: policyCategories[policy.category].hex }">
             🏛️ <span>{{ pDept(policy) }}</span>
           </div>
-          <button class="pc-apply">{{ t('policy.card.apply') }}</button>
+          <a
+            v-if="policyApplyUrl(policy)"
+            class="pc-apply"
+            :href="policyApplyUrl(policy)"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{{ policyApplyLabel(policy) }}</a>
+          <button v-else class="pc-apply disabled" type="button" disabled>{{ policyApplyLabel(policy) }}</button>
         </div>
       </div>
+    </div>
+
+    <div v-if="policySummary || policyTips.length" class="ai-disclaimer">
+      <span class="ai-disclaimer-icon">💡</span>
+      <p><b>{{ policySummary }}</b>{{ policySummary && policyTips.length ? ' ' : '' }}{{ policyTips.join(' ') }}</p>
     </div>
 
     <div class="ai-disclaimer">
@@ -679,10 +741,22 @@ function deadlineColor(days: number): string {
   border: 1px solid var(--border); border-radius: 6px;
   padding: 6px 14px; font-size: 12px; font-weight: 500;
   cursor: pointer; transition: all 0.15s;
+  text-decoration: none; line-height: 1.2; display: inline-flex;
+  align-items: center; justify-content: center; white-space: nowrap;
 }
 .pc-apply:hover {
   color: var(--primary); border-color: var(--primary);
   background: #e6f4ff;
+}
+.pc-apply.disabled,
+.pc-apply:disabled {
+  color: var(--text-secondary); background: #f8fafc;
+  border-color: var(--border-light); cursor: not-allowed; opacity: 0.65;
+}
+.pc-apply.disabled:hover,
+.pc-apply:disabled:hover {
+  color: var(--text-secondary); background: #f8fafc;
+  border-color: var(--border-light);
 }
 
 @media (max-width: 900px) {

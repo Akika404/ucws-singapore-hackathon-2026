@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { Chart, registerables } from 'chart.js'
 import type { ChartType } from 'chart.js'
 import { sharedFormData } from '../store'
+import { apiFetch } from '../api/client'
 
 const { t, tm, locale } = useI18n()
 
@@ -15,51 +16,6 @@ Chart.register(...registerables)
 const industries = computed(() => tm('control.industries') as string[])
 
 type Tier = '0–10%' | '10–30%' | '30%以上'
-
-// 成本科目：cat = 一级体系 id（语言无关），key = 科目 id（语言无关），values = 行业档位
-interface CostRow {
-  cat: string
-  key: string
-  values: Tier[]
-}
-
-function normTier(v: string): Tier {
-  if (v.includes('30%')) return '30%以上'
-  if (v.includes('10')) return '10–30%'
-  return '0–10%'
-}
-
-const RAW_STRUCTURE: { cat: string; key: string; values: string[] }[] = [
-  { cat: 'compliance', key: 'regCompliance', values: ['10–30%','30%以上','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','10–30%','30%以上','30%以上','10–30%','10–30%','30%以上','0–10%','10–30%','30%以上','10–30%','30%以上','30%以上'] },
-  { cat: 'compliance', key: 'license', values: ['10–30%','30%以上','30%以上','30%以上','30%以上','0–10%','30%以上','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','30%以上','30%以上','10–30%','30%以上','30%以上'] },
-  { cat: 'compliance', key: 'legalTaxBasic', values: ['10–30%','30%以上','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%','30%','30%以上','10–30%','10–30%','10–30%','0–10%','10–30%','10–30%','10–30%','30%以上','30%以上'] },
-  { cat: 'space', key: 'officeRent', values: ['0–10%','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','30%以上','10–30%','30%以上','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','10–30%','10–30%'] },
-  { cat: 'space', key: 'storeFactory', values: ['10–30%','30%以上','30%以上','30%以上','10–30%','30%以上','30%以上','30%以上','0–10%','0–10%','30%以上','10–30%','0–10%','10–30%','10–30%','0–10%','30%以上','10–30%','0–10%','0–10%'] },
-  { cat: 'space', key: 'equipment', values: ['10–30%','30%以上','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','0–10%','10–30%','30%以上','10–30%','10–30%','30%以上','10–30%','10–30%','10–30%'] },
-  { cat: 'space', key: 'warehouse', values: ['30%以上','10–30%','30%以上','10–30%','10–30%','30%以上','30%以上','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','0–10%'] },
-  { cat: 'digital', key: 'saas', values: ['0–10%','0–10%','10–30%','10–30%','10–30%','10–30%','10–30%','0–10%','30%以上','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%'] },
-  { cat: 'digital', key: 'cloud', values: ['0–10%','0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','0–10%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','30%以上','10–30%','30%以上'] },
-  { cat: 'digital', key: 'devops', values: ['0–10%','0–10%','10–30%','10–30%','0–10%','0–10%','10–30%','0–10%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','30%以上','10–30%','30%以上'] },
-  { cat: 'digital', key: 'apiAi', values: ['0–10%','0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','0–10%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','30%以上','10–30%','30%以上'] },
-  { cat: 'people', key: 'coreHR', values: ['10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','10–30%','30%以上','30%以上','30%以上','10–30%','30%以上','30%以上','10–30%','30%以上','30%以上','30%以上','30%以上','30%以上','30%以上'] },
-  { cat: 'people', key: 'support', values: ['0–10%','0–10%','10–30%','10–30%','10–30%','30%以上','30%以上','30%以上','10–30%','30%以上','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','30%以上','10–30%','10–30%','10–30%'] },
-  { cat: 'people', key: 'opsMgmt', values: ['10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','30%','30%以上','30%以上','30%以上','30%以上','30%以上','30%以上','30%以上','10–30%','30%以上','30%以上','30%以上','30%以上','30%以上'] },
-  { cat: 'people', key: 'travelTraining', values: ['0–10%','10–30%','10–30%','0–10%','30%以上','0–10%','10–30%','0–10%','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','10–30%','10–30%','30%以上'] },
-  { cat: 'growth', key: 'ads', values: ['0–10%','0–10%','10–30%','0–10%','0–10%','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','0–10%','10–30%','30%以上','0–10%','30%以上','0–10%','0–10%'] },
-  { cat: 'growth', key: 'channelCommission', values: ['0–10%','0–10%','10–30%','0–10%','0–10%','30%以上','10–30%','30%以上','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','10–30%','10–30%','0–10%','30%以上','0–10%','0–10%'] },
-  { cat: 'growth', key: 'salesCommission', values: ['0–10%','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','10–30%','30%以上','30%以上','30%以上','30%以上','10–30%','0–10%','10–30%','10–30%','0–10%','30%以上','0–10%','0–10%'] },
-  { cat: 'growth', key: 'brandContent', values: ['0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','0–10%','10–30%','30%以上','0–10%','30%以上','0–10%','10–30%'] },
-  { cat: 'risk', key: 'returnsLoss', values: ['30%以上','10–30%','10–30%','0–10%','10–30%','30%以上','10–30%','30%以上','0–10%','10–30%','10–30%','0–10%','0–10%','0–10%','10–30%','0–10%','10–30%','10–30%','0–10%','0–10%'] },
-  { cat: 'risk', key: 'inventory', values: ['30%以上','10–30%','30%以上','10–30%','0–10%','30%以上','10–30%','30%以上','0–10%','0–10%','30%以上','0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','0–10%','0–10%','0–10%'] },
-  { cat: 'risk', key: 'legalRiskFine', values: ['10–30%','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','30%以上','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','10–30%','30%以上','10–30%','30%以上','30%以上'] },
-  { cat: 'risk', key: 'insuranceFx', values: ['30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','0–10%','30%以上','10–30%','10–30%','0–10%','10–30%','0–10%','0–10%','10–30%','10–30%','0–10%','30%以上'] },
-]
-
-const costStructure: CostRow[] = RAW_STRUCTURE.map(r => ({
-  cat: r.cat,
-  key: r.key,
-  values: r.values.map(normTier) as Tier[],
-}))
 
 // 一级体系：id → 图标/配色（语言无关）；显示名走 t('control.categories.'+id)
 interface CategoryMeta { icon: string; hex: string }
@@ -73,7 +29,6 @@ const categoriesMeta: Record<string, CategoryMeta> = {
 }
 const categoryOrder = Object.keys(categoriesMeta)
 const catLabel = (id: string) => t('control.categories.' + id)
-const itemLabel = (key: string) => t('control.items.' + key)
 
 /* ---------------- 表单状态 + 联动 ---------------- */
 
@@ -220,64 +175,99 @@ watch(isLinked, v => { setupVisible.value = !v }, { immediate: true })
 
 interface BudgetItem { key?: string; name: string; money: number }
 type BudgetByCategory = Record<string, BudgetItem[]>
+interface OpeningCostResponseCategory {
+  id: string
+  name: string
+  shortName: string
+  icon: string
+  color: string
+  subtotal: number
+  benchmark: number
+  items: { id: string; name: string; amount: number; tier: Tier; reason: string }[]
+}
+interface OpeningCostResponse {
+  companyProfile: Record<string, unknown>
+  summary: { totalBudget: number; conclusion: string }
+  categories: OpeningCostResponseCategory[]
+  tips: string[]
+}
 
 const budgetData = ref<BudgetByCategory>({})
 const benchmark = ref<Record<string, number>>({})
+const aiSummary = ref('')
+const aiTips = ref<string[]>([])
+const loadingBudget = ref(false)
+const budgetError = ref('')
 const cardLocked = reactive<Record<string, boolean>>({})
 categoryOrder.forEach(c => (cardLocked[c] = true))
 
-function recomputeBudget() {
-  const { industryIdx, teamSize, shareholder, province, companyType, capital } = formState
-  const ts = Math.max(1, teamSize | 0)
-  const sh = Math.max(1, shareholder | 0)
-  const cap = Math.max(1, capital | 0)
+function currentFormData() {
+  const f = sharedFormData.value
+  if (f) return f
+  return {
+    business: `(${String.fromCharCode(65 + formState.industryIdx)}) ${industries.value[formState.industryIdx] ?? ''}`,
+    people: formState.teamSize,
+    shareholder: formState.shareholder,
+    companyType: companyTypeLabel(formState.companyType),
+    namePref: formState.namePref,
+    name: previewName.value,
+    scope: {
+      main: formState.scopeMain,
+      others: formState.scopeOthers.split(/[、,，]/).map(s => s.trim()).filter(Boolean),
+    },
+    capital: `认缴金额：${formState.capital} 万元`,
+    address: provinceLabel(formState.province),
+  }
+}
 
-  const baseCostPerPersonPerMonth = 12000
-  const durationMonths = 3
-  const coreHRBase = ts * baseCostPerPersonPerMonth * durationMonths
-
-  const locMul = (province === 'beijing' || province === 'shanghai') ? 1.45
-    : province === 'other' ? 0.8 : 1.0
-
-  let totalWeight = 0
-  const weights = costStructure.map(row => {
-    const tier = row.values[industryIdx]
-    let w = 0.35
-    if (tier === '30%以上') w = 3.5
-    else if (tier === '10–30%') w = 1.5
-    totalWeight += w
-    return { cat: row.cat, key: row.key, weight: w }
-  })
-
-  const humanCoreW = weights.find(i => i.key === 'coreHR')!.weight
-  const initialTotal = (coreHRBase / humanCoreW) * totalWeight
-
+function applyOpeningCost(data: OpeningCostResponse) {
   const next: BudgetByCategory = {}
   const bench: Record<string, number> = {}
   categoryOrder.forEach(c => { next[c] = []; bench[c] = 0 })
-
-  weights.forEach((wi, idx) => {
-    let money = (initialTotal / totalWeight) * wi.weight
-    if (wi.key === 'officeRent' || wi.key === 'storeFactory') money *= locMul
-    if (wi.key === 'regCompliance' || wi.key === 'legalTaxBasic') {
-      money += sh * 1500
-      if (companyType === 'jsc') money *= 1.3
-    }
-    if (wi.key === 'insuranceFx' || wi.key === 'legalRiskFine') money += cap * 20
-
-    const noise = Math.sin(idx + industryIdx + ts) * (money * 0.04)
-    let final = Math.round(money + noise)
-    if (final <= 0) final = Math.round(3500 + Math.abs(Math.sin(idx) * 2000))
-
-    next[wi.cat].push({ key: wi.key, name: itemLabel(wi.key), money: final })
-    bench[wi.cat] += final
+  data.categories?.forEach(cat => {
+    if (!categoryOrder.includes(cat.id)) return
+    next[cat.id] = (cat.items || []).map(item => ({
+      key: item.id,
+      name: item.name,
+      money: Math.round(Number(item.amount) || 0),
+    }))
+    bench[cat.id] = Math.round(Number(cat.benchmark) || Number(cat.subtotal) || 0)
   })
-
   budgetData.value = next
   benchmark.value = bench
+  aiSummary.value = data.summary?.conclusion || ''
+  aiTips.value = data.tips || []
 }
 
-watch(() => ({ ...formState }), recomputeBudget, { immediate: true })
+let budgetRequestSeq = 0
+async function fetchOpeningCost() {
+  const seq = ++budgetRequestSeq
+  loadingBudget.value = true
+  budgetError.value = ''
+  try {
+    const res = await apiFetch('/api/opening-cost-estimate', {
+      method: 'POST',
+      body: JSON.stringify({ formData: currentFormData() }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json() as OpeningCostResponse
+    if (seq === budgetRequestSeq) applyOpeningCost(data)
+  } catch (err) {
+    if (seq === budgetRequestSeq) {
+      budgetError.value = err instanceof Error ? err.message : String(err)
+    }
+  } finally {
+    if (seq === budgetRequestSeq) loadingBudget.value = false
+  }
+}
+
+let budgetFetchDebounce: number | null = null
+function scheduleOpeningCostFetch() {
+  if (budgetFetchDebounce) clearTimeout(budgetFetchDebounce)
+  budgetFetchDebounce = window.setTimeout(fetchOpeningCost, 350)
+}
+
+watch(() => ({ ...formState, lang: locale.value }), scheduleOpeningCostFetch, { immediate: true })
 
 const totalBudget = computed(() =>
   categoryOrder.reduce((s, c) =>
@@ -414,9 +404,9 @@ watch([budgetData, benchmark], () => {
 
 // 语言切换：重算预算（刷新科目本地化名称）并销毁重建图表（数据集 label 仅创建时生效）
 watch(locale, () => {
-  recomputeBudget()
   pie?.destroy(); radar?.destroy(); bar?.destroy()
   pie = radar = bar = null
+  scheduleOpeningCostFetch()
   nextTick(rebuildCharts)
 })
 
@@ -585,6 +575,11 @@ function exportCSV() {
       </div>
     </div>
 
+    <div v-if="loadingBudget || budgetError" class="cfo-tip">
+      <span class="cfo-ico">{{ loadingBudget ? '⏳' : '⚠️' }}</span>
+      <span>{{ loadingBudget ? t('control.status.loading') : t('control.status.error', { message: budgetError }) }}</span>
+    </div>
+
     <!-- 图表 -->
     <div class="chart-section">
       <div class="section-title">
@@ -654,8 +649,14 @@ function exportCSV() {
     <div class="cfo-tip">
       <span class="cfo-ico">📊</span>
       <span>
-        {{ t('control.cfoPre') }}<strong>{{ t('control.cfoEmph') }}</strong>{{ t('control.cfoPost') }}
+        <template v-if="aiSummary">{{ aiSummary }}</template>
+        <template v-else>{{ t('control.cfoPre') }}<strong>{{ t('control.cfoEmph') }}</strong>{{ t('control.cfoPost') }}</template>
       </span>
+    </div>
+
+    <div v-if="aiTips.length" class="cfo-tip">
+      <span class="cfo-ico">💡</span>
+      <span>{{ aiTips.join(' ') }}</span>
     </div>
 
     <div class="ai-disclaimer">

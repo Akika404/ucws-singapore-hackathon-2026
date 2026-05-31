@@ -51,6 +51,10 @@ export default {
     title: '当前筛选条件下暂无匹配政策',
     desc: '尝试放宽优先级或切换政策类别，也可以在沙盘中调整企业参数以解锁更多政策。',
   },
+  status: {
+    loading: 'AI 正在检索扶持政策...',
+    error: '扶持政策接口请求失败：{message}',
+  },
   card: {
     maxPrefix: '最高预估',
     perUnit: '/ {unit}',
