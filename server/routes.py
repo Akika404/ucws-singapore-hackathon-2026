@@ -4,7 +4,7 @@ from typing import List
 from urllib.parse import quote
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from fastapi.responses import FileResponse, StreamingResponse
 
 #导入格式模板
@@ -114,14 +114,14 @@ async def download_all_documents():
     return StreamingResponse(buffer, media_type="application/zip", headers=headers)
 
 @router.post("/generate-names", response_model=CompanyBasicInfoResponse)
-async def page1_generate_names(request: CompanyBasicInfoRequest):
+async def page1_generate_names(request: CompanyBasicInfoRequest, x_lang: str = Header("en", alias="X-Lang")):
     """
     第一页：公司基本信息
     - 输入：公司名称、主营业务（前端传过来），格式校验后面再完善
     - 输出：3-5个公司名称建议、前置/后置审批判断
     """
     try:
-        result = await BusinessService.process_page1_generate_names(request)
+        result = await BusinessService.process_page1_generate_names(request, x_lang)
         #这里加上返回格式校验
         if result["status"] == "success":
             print("1.公司基本信息，路由返回内容：")
@@ -133,14 +133,14 @@ async def page1_generate_names(request: CompanyBasicInfoRequest):
         raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
 
 @router.post("/check-approval", response_model=ApprovalInfoResponse)
-async def page2_check_approval(request: ApprovalInfoRequest):
+async def page2_check_approval(request: ApprovalInfoRequest, x_lang: str = Header("en", alias="X-Lang")):
     """
     第二页：审批信息
     - 输入：业务类型,具体描述
     - 输出：审批信息（是否需要审批、审批类型、审批详情）
     """
     try:
-        result = await BusinessService.process_page2_check_approval(request)
+        result = await BusinessService.process_page2_check_approval(request, x_lang)
         if result["status"] == "success":
             print("2.审批信息，路由返回内容：")
             print(result["data"])
@@ -152,14 +152,14 @@ async def page2_check_approval(request: ApprovalInfoRequest):
 
 
 @router.post("/business-scope", response_model=BusinessScopeResponse)
-async def page3_business_scope(request: BusinessScopeRequest):
+async def page3_business_scope(request: BusinessScopeRequest, x_lang: str = Header("en", alias="X-Lang")):
     """
     第三页：经营范围
     - 输入：一个formData结构，包含多个字段
     - 输出：多个其他经营范围
     """
     try:
-        result = await BusinessService.process_page3_business_scope(request)
+        result = await BusinessService.process_page3_business_scope(request, x_lang)
         if result["status"] == "success":
             print("3.经营范围，路由返回内容：")
             print(result["data"])
@@ -171,14 +171,14 @@ async def page3_business_scope(request: BusinessScopeRequest):
 
 
 @router.post("/company-type", response_model=EmployeeCountResponse)
-async def page4_company_type(request: EmployeeCountRequest):
+async def page4_company_type(request: EmployeeCountRequest, x_lang: str = Header("en", alias="X-Lang")):
     """
     第四页：根据基础信息推荐公司类型
     输入：公司人数、股东人数、前面已填写信息
     输出：推荐公司类型、解释说明原因
     """
     try:
-        result = await BusinessService.process_page4_company_type(request)
+        result = await BusinessService.process_page4_company_type(request, x_lang)
         if result["status"] == "success":
             print("4.根据基础信息推荐公司类型，路由返回内容：")
             print(result["data"])
@@ -190,14 +190,14 @@ async def page4_company_type(request: EmployeeCountRequest):
 
 
 @router.post("/capital-estimate", response_model=CapitalResponse)
-async def page5_capital_estimate(request: CapitalRequest):
+async def page5_capital_estimate(request: CapitalRequest, x_lang: str = Header("en", alias="X-Lang")):
     """
     第五页：注册资本
     - 输入：主营业务类型、注册资本意向金额
     - 输出：预估金额(万元)
     """
     try:
-        result = await BusinessService.process_page5_capital_estimate(request)
+        result = await BusinessService.process_page5_capital_estimate(request, x_lang)
         if result["status"] == "success":
             print("5.注册资本，路由返回内容：")
             print(result["data"])
@@ -209,14 +209,14 @@ async def page5_capital_estimate(request: CapitalRequest):
 
 
 @router.post("/address-recommendations", response_model=AddressResponse)
-async def page6_address_recommend(request: AddressRequest):
+async def page6_address_recommend(request: AddressRequest, x_lang: str = Header("en", alias="X-Lang")):
     """
     第六页：注册地址
     - 输入：主营业务类型、注册资本、省份
     - 输出：地址类型推荐（商用办公地址、园区/孵化器/集中办公区地址、虚拟地址、住宅地址）
     """
     try:
-        result = await BusinessService.process_page6_address_recommend(request)
+        result = await BusinessService.process_page6_address_recommend(request, x_lang)
         if result["status"] == "success":
             print("6.注册地址，路由返回内容：")
             print(result["data"])
@@ -228,9 +228,9 @@ async def page6_address_recommend(request: AddressRequest):
 
 
 @router.post("/org-tips", response_model=OrgTipsResponse)
-async def page7_org_tips(request: OrgTipsRequest):
+async def page7_org_tips(request: OrgTipsRequest, x_lang: str = Header("en", alias="X-Lang")):
     try:
-        result = await BusinessService.process_page7_org_tips(request)
+        result = await BusinessService.process_page7_org_tips(request, x_lang)
         if result["status"] == "success":
             print("7.组织架构tips，路由返回内容：")
             print(result["data"])

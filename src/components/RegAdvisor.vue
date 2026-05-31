@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import StepPage from './StepPage.vue'
 import SummaryPage from './SummaryPage.vue'
 import { sharedFormData } from '../store'
+
+const { t, tm } = useI18n()
 
 export interface StepData {
   id: string
@@ -37,7 +40,6 @@ export interface BaseFormData {
 }
 
 const currentStep = ref(0)
-const steps = ref<StepData[]>([])
 const hasStarted = ref(false)
 const isDissolving = ref(false)
 const optionsLoading = ref(false)
@@ -95,24 +97,24 @@ function startForm() {
 }
 
 const STEP_SKELETONS = [
-  { id: 'name',    title: '公司名称核准',  icon: '🔍' },
-  { id: 'scope',   title: '经营范围拟定',  icon: '📋' },
-  { id: 'type',    title: '公司类型选择',  icon: '🏢' },
-  { id: 'capital', title: '注册资本认缴',  icon: '💰' },
-  { id: 'address', title: '注册地址选择',  icon: '📍' },
-  { id: 'org',     title: '组织架构设计',  icon: '🏗️' },
+  { id: 'name',    icon: '🔍' },
+  { id: 'scope',   icon: '📋' },
+  { id: 'type',    icon: '🏢' },
+  { id: 'capital', icon: '💰' },
+  { id: 'address', icon: '📍' },
+  { id: 'org',     icon: '🏗️' },
 ]
 
-steps.value = STEP_SKELETONS.map(s => ({ ...s, options: [] }))
+// 步骤标题随语言切换；options 在 StepPage 内按需生成，这里恒为空骨架
+const steps = computed<StepData[]>(() =>
+  STEP_SKELETONS.map(s => ({ ...s, title: t(`reg.steps.${s.id}`), options: [] })),
+)
 
-const WELCOME_STEPS = [
-  '公司名称核准', '经营范围拟定', '公司类型选择', '注册资本认缴',
-  '注册地址选择', '组织架构设计', '领取营业执照', '刻章与备案',
-  '银行开户', '税务登记', '社保开户', '公司营业',
-]
+// 欢迎页 12 步流程节点（随语言切换）
+const WELCOME_STEPS = computed<string[]>(() => tm('reg.flow') as string[])
 
 function dotStyle(i: number) {
-  const h = 210 + (i / (WELCOME_STEPS.length - 1)) * 120
+  const h = 210 + (i / (WELCOME_STEPS.value.length - 1)) * 120
   return {
     background: `linear-gradient(to right, hsl(${h}, 78%, 82%), hsl(${h + 18}, 72%, 74%))`,
     animationDelay: i * 0.15 + 's',
@@ -129,9 +131,8 @@ function dotStyle(i: number) {
 
     <div class="welcome-inner">
       <header class="hero">
-        <div class="logo-badge"><span>⚡</span> Lucky OS</div>
-        <h1 class="title">让公司注册，<span class="grad-text">轻松一步到位</span></h1>
-        <p class="subtitle">从核名到开业，全流程智能引导，一站式完成工商注册</p>
+        <h1 class="title">{{ t('reg.welcome.titleLead') }}<span class="grad-text">{{ t('reg.welcome.titleHighlight') }}</span></h1>
+        <p class="subtitle">{{ t('reg.welcome.subtitle') }}</p>
       </header>
 
       <section class="flow">
@@ -149,7 +150,7 @@ function dotStyle(i: number) {
 
       <button class="cta" @click="startForm">
         <span>🚀</span>
-        <span>立即填写</span>
+        <span>{{ t('reg.welcome.cta') }}</span>
       </button>
     </div>
   </div>
@@ -208,7 +209,7 @@ function dotStyle(i: number) {
 
     <div class="ai-disclaimer">
       <span class="ai-disclaimer-icon">⚠️</span>
-      <p><b>AI生成风险提示</b>：内容基于现行法律法规，具体操作请结合当地市场监管部门、银行及税务机关的最新要求执行，建议在重大决策前咨询专业律师或行业顾问。</p>
+      <p><b>{{ t('common.aiRiskTitle') }}</b>{{ t('common.aiRiskSep') }}{{ t('common.aiRiskDesc') }}</p>
     </div>
   </div>
 </template>

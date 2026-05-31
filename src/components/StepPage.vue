@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, watch, computed, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { StepData, BaseFormData } from './RegAdvisor.vue'
+import { apiFetch } from '../api/client'
+import { INDUSTRIES as INDUSTRIES_DATA, PROVINCES_FULL } from '../i18n/data'
+import type { Lang } from '../i18n'
+
+const { t, locale } = useI18n()
 
 const props = defineProps<{
   step: StepData
@@ -57,9 +63,8 @@ async function loadCompanyType() {
   typeLoading.value = true
   typeError.value = ''
   try {
-    const res = await fetch('/api/company-type', {
+    const res = await apiFetch('/api/company-type', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         people: peopleCount.value,
         shareholder: shareholderCount.value,
@@ -78,7 +83,7 @@ async function loadCompanyType() {
     emit('answer', 'type', data.companyType)
   } catch {
     if (seq !== typeRequestSeq) return
-    typeError.value = '公司类型推荐获取失败，请稍后重试'
+    typeError.value = t('step.type.error')
   } finally {
     if (seq === typeRequestSeq) typeLoading.value = false
   }
@@ -117,9 +122,8 @@ async function loadScopeRecommendation() {
   scopeError.value = ''
   scopeRecommendation.value = null
   try {
-    const res = await fetch('/api/business-scope', {
+    const res = await apiFetch('/api/business-scope', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         formData: cleanFormData(props.formData),
       }),
@@ -131,7 +135,7 @@ async function loadScopeRecommendation() {
     emit('answer', 'scope', { main: data.main, others: data.others })
   } catch {
     if (seq !== scopeRequestSeq) return
-    scopeError.value = '经营范围生成失败，请稍后重试'
+    scopeError.value = t('step.scope.error')
   } finally {
     if (seq === scopeRequestSeq) scopeLoading.value = false
   }
@@ -157,11 +161,14 @@ let capitalTimer: ReturnType<typeof setTimeout> | null = null
 let capitalRequestSeq = 0
 
 function formatMoneyWan(amount: number) {
-  return `${amount.toLocaleString('zh-CN')} 万元`
+  return t('step.capital.money', { amount: amount.toLocaleString(locale.value === 'zh' ? 'zh-CN' : 'en-US') })
 }
 
 function formatCapitalAnswer(estimate: CapitalEstimate) {
-  return `意向投资金额：${formatMoneyWan(estimate.intention)}；预估注册资本/认缴金额：${formatMoneyWan(estimate.estimatedAmount)}`
+  return t('step.capital.answer', {
+    intention: formatMoneyWan(estimate.intention),
+    estimated: formatMoneyWan(estimate.estimatedAmount),
+  })
 }
 
 async function loadCapitalEstimate(amount: number) {
@@ -169,9 +176,8 @@ async function loadCapitalEstimate(amount: number) {
   capitalLoading.value = true
   capitalError.value = ''
   try {
-    const res = await fetch('/api/capital-estimate', {
+    const res = await apiFetch('/api/capital-estimate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         capitalIntention: amount,
         formData: cleanFormData(props.formData),
@@ -186,7 +192,7 @@ async function loadCapitalEstimate(amount: number) {
   } catch {
     if (seq !== capitalRequestSeq) return
     capitalEstimate.value = null
-    capitalError.value = '预估金额获取失败，请稍后重试'
+    capitalError.value = t('step.capital.error')
   } finally {
     if (seq === capitalRequestSeq) capitalLoading.value = false
   }
@@ -208,15 +214,7 @@ interface AddressRecommendations {
   explanation: string
 }
 
-const PROVINCES = [
-  '北京市', '天津市', '河北省', '山西省', '内蒙古自治区',
-  '辽宁省', '吉林省', '黑龙江省', '上海市', '江苏省',
-  '浙江省', '安徽省', '福建省', '江西省', '山东省',
-  '河南省', '湖北省', '湖南省', '广东省', '广西壮族自治区',
-  '海南省', '重庆市', '四川省', '贵州省', '云南省',
-  '西藏自治区', '陕西省', '甘肃省', '青海省', '宁夏回族自治区',
-  '新疆维吾尔自治区',
-]
+const PROVINCES = computed(() => PROVINCES_FULL[locale.value as Lang])
 
 const addressProvince = ref('')
 const addressLoading = ref(false)
@@ -225,7 +223,7 @@ const addressRecommendations = ref<AddressRecommendations | null>(null)
 let addressRequestSeq = 0
 
 function formatAddressAnswer(data: AddressRecommendations) {
-  return `${data.province}：推荐：${data.recommendation}`
+  return t('step.address.answer', { province: data.province, recommendation: data.recommendation })
 }
 
 async function loadAddressRecommendations(province: string) {
@@ -234,9 +232,8 @@ async function loadAddressRecommendations(province: string) {
   addressError.value = ''
   addressRecommendations.value = null
   try {
-    const res = await fetch('/api/address-recommendations', {
+    const res = await apiFetch('/api/address-recommendations', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         province,
         formData: cleanFormData(props.formData),
@@ -249,7 +246,7 @@ async function loadAddressRecommendations(province: string) {
     emit('answer', 'address', formatAddressAnswer(data))
   } catch {
     if (seq !== addressRequestSeq) return
-    addressError.value = '注册地址推荐获取失败，请稍后重试'
+    addressError.value = t('step.address.error')
   } finally {
     if (seq === addressRequestSeq) addressLoading.value = false
   }
@@ -270,17 +267,7 @@ watch(() => props.step.id, (id) => {
 // --- end address step state ---
 
 // --- name step state ---
-const INDUSTRIES = [
-  '(A) 农、林、牧、渔业', '(B) 采矿业', '(C) 制造业',
-  '(D) 电力、热力、燃气及水生产和供应业', '(E) 建筑业',
-  '(F) 批发和零售业', '(G) 交通运输、仓储和邮政业',
-  '(H) 住宿和餐饮业', '(I) 信息传输、软件和信息技术服务业',
-  '(J) 金融业', '(K) 房地产业', '(L) 租赁和商务服务业',
-  '(M) 科学研究和技术服务业', '(N) 水利、环境和公共设施管理业',
-  '(O) 居民服务、修理和其他服务业', '(P) 教育',
-  '(Q) 卫生和社会工作', '(R) 文化、体育和娱乐业',
-  '(S) 公共管理、社会保障和社会组织', '(T) 国际组织',
-]
+const INDUSTRIES = computed(() => INDUSTRIES_DATA[locale.value as Lang])
 const namePref = ref(props.formData.namePref || '')
 const nameIndustry = ref('')
 const nameDesc = ref('')
@@ -301,9 +288,8 @@ async function generateNames() {
   customNameInput.value = ''
   emit('answer', 'name', '')
   try {
-    const res = await fetch('/api/generate-names', {
+    const res = await apiFetch('/api/generate-names', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ namePref: namePref.value, desc: nameDesc.value }),
     })
     if (res.ok) {
@@ -318,12 +304,19 @@ async function generateNames() {
   namesLoading.value = false
 }
 
-// 把后端返回的主营业务匹配到固定的行业大类列表（容错：精确 → 包含）
+// 把后端返回的主营业务匹配到固定的行业大类列表
+// 优先用 (A)~(T) 字母前缀（语言无关锚点），再退回精确/包含匹配
 function matchIndustry(val: string): string {
   if (!val) return ''
-  const exact = INDUSTRIES.find(i => i === val)
+  const list = INDUSTRIES.value
+  const letter = val.match(/\(([A-T])\)/i)?.[1]?.toUpperCase()
+  if (letter) {
+    const idx = letter.charCodeAt(0) - 65
+    if (idx >= 0 && idx < list.length) return list[idx]
+  }
+  const exact = list.find(i => i === val)
   if (exact) return exact
-  return INDUSTRIES.find(i => i.includes(val) || val.includes(i)) || ''
+  return list.find(i => i.includes(val) || val.includes(i)) || ''
 }
 
 let approvalTimer: ReturnType<typeof setTimeout> | null = null
@@ -334,9 +327,8 @@ watch(nameIndustry, (ind) => {
   approval.value = null
   approvalTimer = setTimeout(async () => {
     try {
-      const res = await fetch('/api/check-approval', {
+      const res = await apiFetch('/api/check-approval', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ industry: ind, desc: nameDesc.value }),
       })
       if (res.ok) approval.value = await res.json()
@@ -374,9 +366,8 @@ async function loadOrgTips() {
   orgTipsLoading.value = true
   orgTips.value = ''
   try {
-    const res = await fetch('/api/org-tips', {
+    const res = await apiFetch('/api/org-tips', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ formData: cleanFormData(props.formData) }),
     })
     if (res.ok) orgTips.value = (await res.json()).tips
@@ -404,7 +395,7 @@ function toggleExpand(label: string, e: Event) {
 }
 
 function isCustom(label: string) {
-  return label.includes('自定义')
+  return label.includes('自定义') || label.toLowerCase().includes('custom')
 }
 
 function select(label: string) {
@@ -471,7 +462,7 @@ function goForward() {
   }
 
   if (props.step.id === 'org') {
-    emit('answer', 'org', '待定')
+    emit('answer', 'org', t('common.tbd'))
     emit('next')
     return
   }
@@ -486,7 +477,7 @@ function goForward() {
       <div class="step-head">
         <div class="step-icon">{{ step.icon }}</div>
         <div>
-          <div class="step-counter">步骤 {{ stepIndex + 1 }} / {{ totalSteps }}</div>
+          <div class="step-counter">{{ t('step.counter', { current: stepIndex + 1, total: totalSteps }) }}</div>
           <div class="step-title">{{ step.title }}</div>
         </div>
       </div>
@@ -494,19 +485,19 @@ function goForward() {
       <div v-if="step.id === 'name'" class="name-step">
         <!-- 公司名称偏好 -->
         <div class="field-group">
-          <label class="field-label">公司名称偏好</label>
-          <input v-model="namePref" class="input" placeholder="如：星禾云创、智云科技..." @keydown.enter="generateNames" />
+          <label class="field-label">{{ t('step.name.prefLabel') }}</label>
+          <input v-model="namePref" class="input" :placeholder="t('step.name.prefPlaceholder')" @keydown.enter="generateNames" />
         </div>
 
         <!-- 业务描述（可选） -->
         <div class="field-group">
-          <label class="field-label">业务描述 <span class="field-optional">（可选）</span></label>
+          <label class="field-label">{{ t('step.name.descLabel') }} <span class="field-optional">{{ t('step.name.descOptional') }}</span></label>
           <textarea
             v-model="nameDesc"
             class="input textarea"
-            placeholder="描述您要从事的业务领域，帮助生成更贴合的名称，例如：面向中小企业的 SaaS 协同办公平台"
+            :placeholder="t('step.name.descPlaceholder')"
           />
-          <div class="field-hint">填写越详细，生成的名称越贴合您的业务方向</div>
+          <div class="field-hint">{{ t('step.name.descHint') }}</div>
         </div>
 
         <!-- 生成按钮 -->
@@ -514,13 +505,13 @@ function goForward() {
           <button class="btn-generate" :disabled="!namePref.trim() || namesLoading" @click="generateNames">
             <span v-if="namesLoading" class="spinner spinner--dark"></span>
             <span v-else class="btn-generate-icon">✨</span>
-            {{ suggestedNames.length ? '重新生成' : '生成名称建议' }}
+            {{ suggestedNames.length ? t('step.name.regenerate') : t('step.name.generate') }}
           </button>
         </div>
 
         <!-- 生成结果 -->
         <div class="field-group">
-          <div v-if="namesLoading" class="names-loading"><span class="spinner"></span> 正在生成名称建议...</div>
+          <div v-if="namesLoading" class="names-loading"><span class="spinner"></span> {{ t('step.name.generating') }}</div>
           <div v-if="suggestedNames.length" class="name-suggestions">
             <button
               v-for="(name, i) in suggestedNames"
@@ -543,11 +534,11 @@ function goForward() {
             >
               <div class="name-option-index">✎</div>
               <div class="name-option-custom-body">
-                <span class="name-option-label">自定义名称</span>
+                <span class="name-option-label">{{ t('step.name.customName') }}</span>
                 <input
                   v-model="customNameInput"
                   class="custom-name-input"
-                  placeholder="输入您已经取好的公司全称..."
+                  :placeholder="t('step.name.customNamePlaceholder')"
                   @click.stop="selectCustomName"
                   @input="onCustomNameInput"
                 />
@@ -559,100 +550,100 @@ function goForward() {
 
         <!-- 主营业务 -->
         <div class="field-group">
-          <label class="field-label">主营业务</label>
+          <label class="field-label">{{ t('step.name.bizLabel') }}</label>
           <div class="biz-row">
             <select v-model="nameIndustry" class="input select">
-              <option value="">请选择行业分类</option>
+              <option value="">{{ t('step.name.bizSelectPlaceholder') }}</option>
               <option v-for="ind in INDUSTRIES" :key="ind" :value="ind">{{ ind }}</option>
             </select>
           </div>
           <div v-if="recommendedBusiness" class="biz-reco">
-            <span class="biz-reco-tag">✨ AI 推荐</span>
+            <span class="biz-reco-tag">{{ t('step.name.aiReco') }}</span>
             <span class="biz-reco-value">{{ recommendedBusiness }}</span>
           </div>
-          <div class="field-hint">参考：经营范围、公司类型、注册资本将在后续步骤中根据此信息智能推荐</div>
+          <div class="field-hint">{{ t('step.name.bizHint') }}</div>
         </div>
 
         <!-- 前置/后置审批提示 -->
         <div v-if="approvalLoading" class="approval-banner approval-banner--loading">
           <span class="spinner spinner--dark" style="border-color: rgba(0,0,0,0.15); border-top-color: #d46b08;"></span>
-          <span style="font-size:13px;color:#8c6d1f;">正在检查审批要求...</span>
+          <span style="font-size:13px;color:#8c6d1f;">{{ t('step.name.approvalChecking') }}</span>
         </div>
         <div v-else-if="approval?.needsApproval" class="approval-banner">
           <div class="banner-left">
             <span class="banner-icon">⚠️</span>
             <div>
-              <div class="banner-title">涉及{{ approval.type }}</div>
-              <div class="banner-desc">您所选的业务类型需要办理相关审批手续，请提前了解相关要求</div>
+              <div class="banner-title">{{ t('step.name.approvalNeeded', { type: approval.type }) }}</div>
+              <div class="banner-desc">{{ t('step.name.approvalDesc') }}</div>
             </div>
           </div>
-          <button class="btn-detail" @click="showModal = true">查看详情</button>
+          <button class="btn-detail" @click="showModal = true">{{ t('step.name.viewDetail') }}</button>
         </div>
       </div>
 
       <div v-else-if="step.id === 'type'" class="type-step">
         <div class="type-input-row">
           <div class="field-group">
-            <label class="field-label">公司人数</label>
+            <label class="field-label">{{ t('step.type.peopleLabel') }}</label>
             <div class="pretty-control">
-              <input v-model.number="peopleCount" type="number" min="1" class="input pretty-input type-input" placeholder="请输入公司人数" />
-              <span class="pretty-suffix">人</span>
+              <input v-model.number="peopleCount" type="number" min="1" class="input pretty-input type-input" :placeholder="t('step.type.peoplePlaceholder')" />
+              <span class="pretty-suffix">{{ t('step.type.unit') }}</span>
             </div>
           </div>
           <div class="field-group">
-            <label class="field-label">股东人数</label>
+            <label class="field-label">{{ t('step.type.shareholderLabel') }}</label>
             <div class="pretty-control">
-              <input v-model.number="shareholderCount" type="number" min="1" class="input pretty-input type-input" placeholder="请输入股东人数" />
-              <span class="pretty-suffix">人</span>
+              <input v-model.number="shareholderCount" type="number" min="1" class="input pretty-input type-input" :placeholder="t('step.type.shareholderPlaceholder')" />
+              <span class="pretty-suffix">{{ t('step.type.unit') }}</span>
             </div>
           </div>
         </div>
 
         <div v-if="typeLoading" class="type-loading">
           <span class="spinner"></span>
-          正在为您推荐合适的公司类型...
+          {{ t('step.type.loading') }}
         </div>
 
         <div v-else-if="typeError" class="type-error">
           <span>{{ typeError }}</span>
-          <button class="btn-detail" @click="loadCompanyType">重试</button>
+          <button class="btn-detail" @click="loadCompanyType">{{ t('common.retry') }}</button>
         </div>
 
         <div v-else-if="typeRecommendation" class="type-result-card">
           <div class="type-result">
-            <span class="type-label">推荐公司类型：</span>
+            <span class="type-label">{{ t('step.type.resultLabel') }}</span>
             <span class="type-value">{{ typeRecommendation.companyType }}</span>
           </div>
           <div class="type-explanation">{{ typeRecommendation.explanation }}</div>
         </div>
 
-        <div v-else class="type-empty">输入公司人数和股东人数后将自动推荐公司类型</div>
+        <div v-else class="type-empty">{{ t('step.type.empty') }}</div>
       </div>
 
       <div v-else-if="step.id === 'scope'" class="scope-step">
         <div class="scope-business">
-          <span class="scope-business-label">已选择主营业务</span>
-          <span class="scope-business-value">{{ formData.business || '未选择' }}</span>
+          <span class="scope-business-label">{{ t('step.scope.selectedBusiness') }}</span>
+          <span class="scope-business-value">{{ formData.business || t('common.notSelected') }}</span>
         </div>
 
         <div v-if="scopeLoading" class="scope-loading">
           <span class="spinner"></span>
-          正在拟定经营范围...
+          {{ t('step.scope.loading') }}
         </div>
 
         <div v-else-if="scopeError" class="scope-error">
           <span>{{ scopeError }}</span>
-          <button class="btn-detail" @click="loadScopeRecommendation">重试</button>
+          <button class="btn-detail" @click="loadScopeRecommendation">{{ t('common.retry') }}</button>
         </div>
 
         <div v-else-if="scopeRecommendation" class="scope-result">
           <div class="scope-main">
-            <span class="scope-tag scope-tag--main">主营业务</span>
+            <span class="scope-tag scope-tag--main">{{ t('step.scope.mainTag') }}</span>
             <span class="scope-main-text">{{ scopeRecommendation.main }}</span>
           </div>
 
           <div class="scope-others">
-            <div class="scope-section-title">其他经营范围</div>
+            <div class="scope-section-title">{{ t('step.scope.othersTitle') }}</div>
             <div class="scope-chip-list">
               <span v-for="item in scopeRecommendation.others" :key="item" class="scope-chip">{{ item }}</span>
             </div>
@@ -662,52 +653,52 @@ function goForward() {
 
       <div v-else-if="step.id === 'capital'" class="capital-step">
         <div class="field-group">
-          <label class="field-label">意向投资金额</label>
+          <label class="field-label">{{ t('step.capital.intentionLabel') }}</label>
           <div class="capital-input-row pretty-control">
             <input
               v-model.number="capitalIntention"
               type="number"
               min="1"
               class="input pretty-input capital-input"
-              placeholder="请输入认缴金额"
+              :placeholder="t('step.capital.intentionPlaceholder')"
             />
-            <span class="pretty-suffix capital-unit">万元</span>
+            <span class="pretty-suffix capital-unit">{{ t('step.capital.unit') }}</span>
           </div>
         </div>
 
-        <div class="capital-tip">新公司法要求五年内完成实缴。</div>
+        <div class="capital-tip">{{ t('step.capital.tip') }}</div>
 
         <div class="capital-estimate">
-          <span class="capital-estimate-label">预估注册资本/认缴金额</span>
+          <span class="capital-estimate-label">{{ t('step.capital.estimateLabel') }}</span>
           <span v-if="capitalLoading" class="capital-estimate-value muted">
             <span class="spinner"></span>
-            正在预估...
+            {{ t('step.capital.estimating') }}
           </span>
           <span v-else-if="capitalError" class="capital-estimate-value error">{{ capitalError }}</span>
           <span v-else-if="capitalEstimate" class="capital-estimate-value">
             {{ formatMoneyWan(capitalEstimate.estimatedAmount) }}
           </span>
-          <span v-else class="capital-estimate-value muted">输入认缴金额后自动显示</span>
+          <span v-else class="capital-estimate-value muted">{{ t('step.capital.empty') }}</span>
         </div>
         <div v-if="capitalEstimate?.explanation" class="capital-explanation">{{ capitalEstimate.explanation }}</div>
       </div>
 
       <div v-else-if="step.id === 'address'" class="address-step">
         <div class="field-group">
-          <label class="field-label">注册地址</label>
+          <label class="field-label">{{ t('step.address.label') }}</label>
           <div class="pretty-control pretty-select-wrap">
             <select v-model="addressProvince" class="input select pretty-input address-select">
-              <option value="">请选择省份</option>
+              <option value="">{{ t('step.address.selectPlaceholder') }}</option>
               <option v-for="province in PROVINCES" :key="province" :value="province">{{ province }}</option>
             </select>
           </div>
         </div>
 
         <div class="address-recommend">
-          <div class="address-recommend-title">推荐</div>
+          <div class="address-recommend-title">{{ t('step.address.recommendTitle') }}</div>
           <div v-if="addressLoading" class="address-loading">
             <span class="spinner"></span>
-            正在生成注册地址建议...
+            {{ t('step.address.loading') }}
           </div>
           <div v-else-if="addressError" class="address-error">{{ addressError }}</div>
           <div v-else-if="addressRecommendations" class="address-result">
@@ -718,23 +709,23 @@ function goForward() {
               {{ addressRecommendations.explanation }}
             </div>
           </div>
-          <div v-else class="address-empty">选择省份后自动显示推荐地址类型</div>
+          <div v-else class="address-empty">{{ t('step.address.empty') }}</div>
         </div>
       </div>
 
       <div v-else-if="step.id === 'org'" class="org-step">
         <div class="org-image-wrap">
-          <img class="org-image" :src="orgImage" alt="组织架构设计图" />
+          <img class="org-image" :src="orgImage" :alt="t('step.org.imageAlt')" />
         </div>
         <div class="org-tips">
-          <span class="org-tips-label">Tips: </span>
-          <span v-if="orgTipsLoading" class="org-tips-text muted"><span class="spinner"></span> 正在生成建议...</span>
-          <span v-else class="org-tips-text">{{ orgTips || '待定' }}</span>
+          <span class="org-tips-label">{{ t('step.org.tipsLabel') }}</span>
+          <span v-if="orgTipsLoading" class="org-tips-text muted"><span class="spinner"></span> {{ t('step.org.generating') }}</span>
+          <span v-else class="org-tips-text">{{ orgTips || t('common.tbd') }}</span>
         </div>
       </div>
 
       <div v-else-if="optionsLoading" class="options-loading">
-        <span class="spinner"></span> AI 正在根据您的信息生成选项...
+        <span class="spinner"></span> {{ t('step.optionsLoading') }}
       </div>
 
       <div v-else class="options-list">
@@ -751,7 +742,7 @@ function goForward() {
           <div class="opt-left">
             <div class="opt-top">
               <span class="opt-label">{{ opt.label }}</span>
-              <span v-if="opt.recommended" class="rec-badge">推荐</span>
+              <span v-if="opt.recommended" class="rec-badge">{{ t('step.recommended') }}</span>
               <span v-if="isCustom(opt.label) ? customActive : selected === opt.label" class="check">✓</span>
             </div>
             <div class="opt-summary">{{ opt.summary }}</div>
@@ -759,13 +750,13 @@ function goForward() {
               <div class="opt-detail">{{ opt.detail }}</div>
             </template>
             <button class="expand-btn" @click.stop="toggleExpand(opt.label, $event)">
-              {{ expanded.has(opt.label) ? '收起 ▲' : '查看详情 ▼' }}
+              {{ expanded.has(opt.label) ? t('step.collapse') : t('step.expand') }}
             </button>
             <input
               v-if="isCustom(opt.label) && customActive"
               v-model="customInput"
               class="custom-input"
-              placeholder="请输入自定义内容..."
+              :placeholder="t('step.customPlaceholder')"
               @click.stop
               @input="onCustomInput"
             />
@@ -776,30 +767,30 @@ function goForward() {
 
     <div class="nav-bar">
       <button class="btn-ghost" @click="emit('prev')">
-      ← {{ stepIndex === 0 ? '返回' : '上一步' }}
+      ← {{ stepIndex === 0 ? t('step.nav.back') : t('step.nav.prev') }}
       </button>
       <div class="nav-center">
-        <span v-if="step.id === 'type'" class="selected-hint">{{ typeRecommendation ? `已选：${typeRecommendation.companyType}` : '请输入公司人数和股东人数' }}</span>
+        <span v-if="step.id === 'type'" class="selected-hint">{{ typeRecommendation ? t('step.nav.selected', { value: typeRecommendation.companyType }) : t('step.nav.typeHintEmpty') }}</span>
         <span v-else-if="step.id === 'org'" class="selected-hint"></span>
         <span v-else-if="step.id === 'name'">
-          <span v-if="customNameActive && customNameInput.trim()" class="selected-hint">已选：{{ customNameInput.trim() }}</span>
-          <span v-else-if="!customNameActive && selected" class="selected-hint">已选：{{ selected }}</span>
-          <span v-else-if="!namePref.trim() || !nameIndustry" class="selected-hint muted">请填写名称偏好并选择主营业务</span>
-          <span v-else class="selected-hint muted">请选择一个 AI 推荐名称，或输入自定义名称</span>
+          <span v-if="customNameActive && customNameInput.trim()" class="selected-hint">{{ t('step.nav.selected', { value: customNameInput.trim() }) }}</span>
+          <span v-else-if="!customNameActive && selected" class="selected-hint">{{ t('step.nav.selected', { value: selected }) }}</span>
+          <span v-else-if="!namePref.trim() || !nameIndustry" class="selected-hint muted">{{ t('step.nav.nameHintForm') }}</span>
+          <span v-else class="selected-hint muted">{{ t('step.nav.nameHintPick') }}</span>
         </span>
         <span v-else-if="step.id === 'scope'" class="selected-hint">
-          <span v-if="scopeRecommendation">已选主营：{{ scopeRecommendation.main }}</span>
-          <span v-else class="muted">正在拟定经营范围...</span>
+          <span v-if="scopeRecommendation">{{ t('step.nav.scopeSelectedMain', { main: scopeRecommendation.main }) }}</span>
+          <span v-else class="muted">{{ t('step.nav.scopeDrafting') }}</span>
         </span>
-        <span v-else-if="selected" class="selected-hint">已选：{{ selected }}</span>
-        <span v-else class="selected-hint muted">请选择一个选项</span>
+        <span v-else-if="selected" class="selected-hint">{{ t('step.nav.selected', { value: selected }) }}</span>
+        <span v-else class="selected-hint muted">{{ t('step.nav.pickOption') }}</span>
       </div>
       <button
         class="btn-primary"
         :disabled="!canGoNext"
         @click="goForward"
       >
-        {{ step.id === 'org' ? '生成个性化建议及完整流程' : (isLast ? '完成注册方案 🎉' : '下一步 →') }}
+        {{ step.id === 'org' ? t('step.nav.orgNext') : (isLast ? t('step.nav.finish') : t('step.nav.next')) }}
       </button>
     </div>
   </div>
@@ -808,12 +799,12 @@ function goForward() {
     <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
       <div class="modal">
         <div class="modal-head">
-          <span>{{ approval?.type }}说明</span>
+          <span>{{ t('step.modal.title', { type: approval?.type }) }}</span>
           <button class="modal-close" @click="showModal = false">✕</button>
         </div>
         <div class="modal-body">{{ approval?.details }}</div>
         <div class="modal-footer">
-          <button class="btn-primary" @click="showModal = false">我已了解</button>
+          <button class="btn-primary" @click="showModal = false">{{ t('step.modal.ack') }}</button>
         </div>
       </div>
     </div>

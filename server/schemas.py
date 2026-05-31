@@ -32,7 +32,8 @@ class ApprovalType(str, Enum):
 class ApprovalInfoResponse(BaseModel):
     """审批响应"""
     needsApproval: bool = Field(..., description="是否涉及审批")
-    type: ApprovalType = Field(..., description="审批类型：前置审批/后置审批/空字符串")
+    # type 放宽为字符串：合法取值（前置/后置审批，中英文）由 service 按 X-Lang 校验
+    type: str = Field("", description="审批类型：前置审批/后置审批/空字符串（按语言）")
     details: str = Field(..., description="审批说明详情，支持换行符")
 
 

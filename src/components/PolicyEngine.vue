@@ -1,24 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { sharedFormData } from '../store'
+
+const { t, tm, locale } = useI18n()
 
 /* ---------------- 基础配置 ---------------- */
 
-const industries = [
-  '信息传输、软件和信息技术服务业',
-  '科学研究和技术服务业',
-  '制造业',
-  '批发和零售业',
-  '住宿和餐饮业',
-  '金融业',
-  '建筑业',
-  '文化、体育和娱乐业',
-  '其他服务业',
-]
+// 行业（PolicyEngine 自有 9 项，与 A~T 不对齐）；仅展示，逻辑用 industryIdx
+const industries = computed(() => tm('policy.industries') as string[])
 
-const PROVINCES = ['上海市', '北京市', '广东省', '浙江省', '其他区域']
+const PROVINCE_IDS = ['shanghai', 'beijing', 'guangdong', 'zhejiang', 'other']
+const provinceLabel = (id: string) => t('policy.provinces.' + id)
 
-type CategoryKey = '全部政策' | '资金补贴' | '税收减免' | '场地免租' | '金融信贷' | '人才落户'
+// 政策类别：id 语言无关（all/funding/tax/space/loan/talent），显示走 t()
+type CategoryKey = 'all' | 'funding' | 'tax' | 'space' | 'loan' | 'talent'
 
 interface CategoryStyle {
   hex: string
@@ -27,105 +23,61 @@ interface CategoryStyle {
 }
 
 const policyCategories: Record<CategoryKey, CategoryStyle> = {
-  '全部政策': { hex: '#475569', light: '#f1f5f9', border: '#cbd5e1' },
-  '资金补贴': { hex: '#e11d48', light: '#fff1f2', border: '#fecdd3' },
-  '税收减免': { hex: '#059669', light: '#ecfdf5', border: '#a7f3d0' },
-  '场地免租': { hex: '#0891b2', light: '#ecfeff', border: '#a5f3fc' },
-  '金融信贷': { hex: '#1677ff', light: '#e6f4ff', border: '#91caff' },
-  '人才落户': { hex: '#7c3aed', light: '#f5f3ff', border: '#ddd6fe' },
+  all:     { hex: '#475569', light: '#f1f5f9', border: '#cbd5e1' },
+  funding: { hex: '#e11d48', light: '#fff1f2', border: '#fecdd3' },
+  tax:     { hex: '#059669', light: '#ecfdf5', border: '#a7f3d0' },
+  space:   { hex: '#0891b2', light: '#ecfeff', border: '#a5f3fc' },
+  loan:    { hex: '#1677ff', light: '#e6f4ff', border: '#91caff' },
+  talent:  { hex: '#7c3aed', light: '#f5f3ff', border: '#ddd6fe' },
 }
 const categoryKeys = Object.keys(policyCategories) as CategoryKey[]
+const categoryLabel = (id: CategoryKey) => t('policy.categories.' + id)
 
 type Priority = 'P0' | 'P1' | 'P2'
-const priorityStyles: Record<Priority, { text: string; weight: number; color: string; bg: string; border: string }> = {
-  P0: { text: 'P0 立即申请',   weight: 3, color: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
-  P1: { text: 'P1 本季度重点', weight: 2, color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' },
-  P2: { text: 'P2 长期规划',   weight: 1, color: '#475569', bg: '#f8fafc', border: '#e2e8f0' },
+const priorityStyles: Record<Priority, { weight: number; color: string; bg: string; border: string }> = {
+  P0: { weight: 3, color: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
+  P1: { weight: 2, color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' },
+  P2: { weight: 1, color: '#475569', bg: '#f8fafc', border: '#e2e8f0' },
 }
+const priorityLabel = (p: Priority) => t('policy.priority.' + p)
 
+// 政策记录：仅保留逻辑/数值字段；展示字段（title/desc/department/cycle/valueUnit/字符串型 maxValue）按 id 查 t('policy.db.<id>.*')
 interface PolicyDef {
   id: string
-  title: string
-  category: Exclude<CategoryKey, '全部政策'>
-  maxValue: number | string
-  valueUnit: string
+  category: Exclude<CategoryKey, 'all'>
+  maxValue: number | 'maxValue'  // 数字→直接展示；'maxValue'→查 t('policy.db.<id>.maxValue')
   typeValue: number
-  department: string
   prob: number
-  cycle: string
   deadlineDays: number
   priority: Priority
   reqProv: string
   reqSizeMin: number
   reqCapMin: number
   reqInd: 'all' | number[]
-  desc: string
 }
 
 const policyDatabase: PolicyDef[] = [
-  {
-    id: 'P-FUND-01', title: '首次创业一次性补贴', category: '资金补贴',
-    maxValue: 8000, valueUnit: '户', typeValue: 8000,
-    department: '上海市人社局', prob: 95, cycle: '2-3周', deadlineDays: 120,
-    priority: 'P1',
-    reqProv: '上海市', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all',
-    desc: '面向在上海市首次创办小微企业、个体工商户的本市户籍人员及符合条件的非本市户籍人员。企业注册成立满 6 个月且至少吸纳 1 名本市劳动者就业即可申请。',
-  },
-  {
-    id: 'P-FUND-02', title: '稳岗扩岗及一次性吸纳就业补贴', category: '资金补贴',
-    maxValue: 50000, valueUnit: '年', typeValue: 50000,
-    department: '各地人社局', prob: 99, cycle: '免申即享', deadlineDays: 15,
-    priority: 'P0',
-    reqProv: 'all', reqSizeMin: 15, reqCapMin: 0, reqInd: 'all',
-    desc: '鼓励企业吸纳高校毕业生及登记失业人员，当社保缴纳人数达标即可触发该项补贴，部分地区已实现后台比对"免申即享"。',
-  },
-  {
-    id: 'P-SPACE-01', title: '初创期创业场地房租补贴', category: '场地免租',
-    maxValue: 30000, valueUnit: '年', typeValue: 30000,
-    department: '各区就业促进中心', prob: 80, cycle: '1-2个月', deadlineDays: 60,
-    priority: 'P1',
-    reqProv: 'all', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all',
-    desc: '针对入驻本市市级创业孵化示范基地的初创企业或创业团队。补贴标准最高2.8元/平方米/天，企业最长可享受 3 年补贴。',
-  },
-  {
-    id: 'P-LOAN-01', title: '创业担保贷款及贴息', category: '金融信贷',
-    maxValue: 3000000, valueUnit: '最高额度', typeValue: 300000,
-    department: '市财政局 / 合作银行', prob: 65, cycle: '3-4周', deadlineDays: 365,
-    priority: 'P2',
-    reqProv: 'all', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all',
-    desc: '为缓解小微企业融资难，由政府提供担保基金并给予全额或部分贴息。小微企业最高可申请 300 万元，按时还本付息后可申请利息补贴。',
-  },
-  {
-    id: 'P-TAX-01', title: '小微企业普惠性税收减免', category: '税收减免',
-    maxValue: '全额返还', valueUnit: '企税优惠', typeValue: 150000,
-    department: '国家税务总局', prob: 100, cycle: '汇算清缴期', deadlineDays: 45,
-    priority: 'P1',
-    reqProv: 'all', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all',
-    desc: '降低小微企业运营成本的普惠性国家与地方叠加政策。月销售额10万元以下小规模纳税人免征增值税；科技型中小企业研发费用加计扣除 100%。',
-  },
-  {
-    id: 'P-TAX-02', title: '经济园区集群注册与返税', category: '税收减免',
-    maxValue: '40%', valueUnit: '财政扶持', typeValue: 200000,
-    department: '各区经济园区管委会', prob: 90, cycle: '按季度返还', deadlineDays: 365,
-    priority: 'P2',
-    reqProv: '上海市', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all',
-    desc: '郊区经济园区特有政策，适合轻资产服务型企业。提供免费虚拟注册地址，免除初期硬成本，并根据企业实际缴纳税额给予一定比例财政奖励。',
-  },
-  {
-    id: 'P-TALENT-01', title: '临港/张江重点产业人才落户', category: '人才落户',
-    maxValue: '3-5年', valueUnit: '居转户缩短', typeValue: 0,
-    department: '临港管委会/人社局', prob: 50, cycle: '2-3个月', deadlineDays: 20,
-    priority: 'P0',
-    reqProv: '上海市', reqSizeMin: 5, reqCapMin: 100, reqInd: [0, 1, 2],
-    desc: '针对特定区域和重点产业创业的核心团队。用人单位引进的紧缺急需人才可直接落户，享受专属人才公寓及租房补贴。',
-  },
+  { id: 'P-FUND-01', category: 'funding', maxValue: 8000, typeValue: 8000, prob: 95, deadlineDays: 120, priority: 'P1', reqProv: 'shanghai', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
+  { id: 'P-FUND-02', category: 'funding', maxValue: 50000, typeValue: 50000, prob: 99, deadlineDays: 15, priority: 'P0', reqProv: 'all', reqSizeMin: 15, reqCapMin: 0, reqInd: 'all' },
+  { id: 'P-SPACE-01', category: 'space', maxValue: 30000, typeValue: 30000, prob: 80, deadlineDays: 60, priority: 'P1', reqProv: 'all', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
+  { id: 'P-LOAN-01', category: 'loan', maxValue: 3000000, typeValue: 300000, prob: 65, deadlineDays: 365, priority: 'P2', reqProv: 'all', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
+  { id: 'P-TAX-01', category: 'tax', maxValue: 'maxValue', typeValue: 150000, prob: 100, deadlineDays: 45, priority: 'P1', reqProv: 'all', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
+  { id: 'P-TAX-02', category: 'tax', maxValue: 'maxValue', typeValue: 200000, prob: 90, deadlineDays: 365, priority: 'P2', reqProv: 'shanghai', reqSizeMin: 1, reqCapMin: 0, reqInd: 'all' },
+  { id: 'P-TALENT-01', category: 'talent', maxValue: 'maxValue', typeValue: 0, prob: 50, deadlineDays: 20, priority: 'P0', reqProv: 'shanghai', reqSizeMin: 5, reqCapMin: 100, reqInd: [0, 1, 2] },
 ]
+
+// 展示字段访问器（按 id）
+const pTitle = (p: PolicyDef) => t(`policy.db.${p.id}.title`)
+const pDesc = (p: PolicyDef) => t(`policy.db.${p.id}.desc`)
+const pDept = (p: PolicyDef) => t(`policy.db.${p.id}.department`)
+const pCycle = (p: PolicyDef) => t(`policy.db.${p.id}.cycle`)
+const pUnit = (p: PolicyDef) => t(`policy.db.${p.id}.unit`)
 
 /* ---------------- 表单状态 + 联动 ---------------- */
 
 const formState = reactive({
   industryIdx: 0,
-  province: '上海市',
+  province: 'shanghai',
   namePref: '星禾云创',
   teamSize: 25,
   capital: 150,
@@ -135,30 +87,36 @@ const overridden = reactive<Record<keyof typeof formState, boolean>>({
   industryIdx: false, province: false, namePref: false, teamSize: false, capital: false,
 })
 
+// 行业匹配（自有 9 项）：优先 (A)~(T) 字母前缀映射，再退回中英文关键词扫描
+const LETTER_TO_IDX: Record<string, number> = { I: 0, M: 1, C: 2, F: 3, H: 4, J: 5, E: 6, R: 7 }
 function matchIndustryIdx(text: string): number {
   if (!text) return 0
+  const letter = text.match(/\(([A-T])\)/i)?.[1]?.toUpperCase()
+  if (letter) return LETTER_TO_IDX[letter] ?? 8
   const lower = text.toLowerCase()
   const map: { kws: string[]; idx: number }[] = [
-    { kws: ['软件', '互联网', 'saas', 'it', '信息', '科技', '数字'], idx: 0 },
-    { kws: ['科研', '研究', '技术服务'], idx: 1 },
-    { kws: ['制造', '工厂'], idx: 2 },
-    { kws: ['批发', '零售', '电商'], idx: 3 },
-    { kws: ['餐饮', '酒店', '住宿'], idx: 4 },
-    { kws: ['金融', '银行', '保险', '证券'], idx: 5 },
-    { kws: ['建筑', '工程'], idx: 6 },
-    { kws: ['文化', '体育', '娱乐'], idx: 7 },
+    { kws: ['软件', '互联网', 'saas', 'it', '信息', '科技', '数字', 'software', 'information'], idx: 0 },
+    { kws: ['科研', '研究', '技术服务', 'research', 'technical'], idx: 1 },
+    { kws: ['制造', '工厂', 'manufactur'], idx: 2 },
+    { kws: ['批发', '零售', '电商', 'wholesale', 'retail'], idx: 3 },
+    { kws: ['餐饮', '酒店', '住宿', 'catering', 'accommodation'], idx: 4 },
+    { kws: ['金融', '银行', '保险', '证券', 'finance'], idx: 5 },
+    { kws: ['建筑', '工程', 'construction'], idx: 6 },
+    { kws: ['文化', '体育', '娱乐', 'culture', 'sports', 'entertainment'], idx: 7 },
   ]
   for (const a of map) if (a.kws.some(k => lower.includes(k.toLowerCase()))) return a.idx
   return 8
 }
 
+// 省份匹配：返回 id，中英文皆可识别
 function matchProvince(addr: string): string {
-  if (!addr) return '其他区域'
-  if (addr.includes('北京')) return '北京市'
-  if (addr.includes('上海')) return '上海市'
-  if (addr.includes('广东') || addr.includes('深圳') || addr.includes('广州')) return '广东省'
-  if (addr.includes('浙江') || addr.includes('杭州') || addr.includes('宁波')) return '浙江省'
-  return '其他区域'
+  if (!addr) return 'other'
+  const s = addr.toLowerCase()
+  if (addr.includes('北京') || s.includes('beijing')) return 'beijing'
+  if (addr.includes('上海') || s.includes('shanghai')) return 'shanghai'
+  if (addr.includes('广东') || addr.includes('深圳') || addr.includes('广州') || s.includes('guangdong') || s.includes('shenzhen') || s.includes('guangzhou')) return 'guangdong'
+  if (addr.includes('浙江') || addr.includes('杭州') || addr.includes('宁波') || s.includes('zhejiang') || s.includes('hangzhou') || s.includes('ningbo')) return 'zhejiang'
+  return 'other'
 }
 
 function parseCapital(c: string): number {
@@ -173,11 +131,11 @@ const linkedFields = computed(() => {
   const f = sharedFormData.value
   if (!f) return [] as string[]
   const arr: string[] = []
-  if (f.business && !overridden.industryIdx) arr.push('行业')
-  if (f.address && !overridden.province) arr.push('注册地')
-  if (f.namePref && !overridden.namePref) arr.push('企业字号')
-  if (typeof f.people === 'number' && f.people > 0 && !overridden.teamSize) arr.push('团队规模')
-  if (f.capital && !overridden.capital) arr.push('认缴资本')
+  if (f.business && !overridden.industryIdx) arr.push(t('policy.fieldTags.industry'))
+  if (f.address && !overridden.province) arr.push(t('policy.fieldTags.province'))
+  if (f.namePref && !overridden.namePref) arr.push(t('policy.fieldTags.namePref'))
+  if (typeof f.people === 'number' && f.people > 0 && !overridden.teamSize) arr.push(t('policy.fieldTags.teamSize'))
+  if (f.capital && !overridden.capital) arr.push(t('policy.fieldTags.capital'))
   return arr
 })
 
@@ -205,7 +163,7 @@ watch(isLinked, v => { setupVisible.value = !v }, { immediate: true })
 
 /* ---------------- 政策引擎 ---------------- */
 
-const currentCategory = ref<CategoryKey>('全部政策')
+const currentCategory = ref<CategoryKey>('all')
 type PriorityFilter = 'ALL' | Priority
 const currentPriority = ref<PriorityFilter>('ALL')
 type SortMethod = 'priority' | 'amountDesc' | 'probDesc' | 'deadlineAsc'
@@ -217,7 +175,7 @@ interface MatchedPolicy extends PolicyDef {
 
 const matchedPolicies = computed<MatchedPolicy[]>(() => {
   const { industryIdx, province, teamSize, capital } = formState
-  const industryName = industries[industryIdx] ?? ''
+  const industryName = industries.value[industryIdx] ?? ''
 
   const list: MatchedPolicy[] = []
   policyDatabase.forEach(policy => {
@@ -225,15 +183,15 @@ const matchedPolicies = computed<MatchedPolicy[]>(() => {
     if (teamSize < policy.reqSizeMin) return
     if (capital < policy.reqCapMin) return
     if (policy.reqInd !== 'all' && !policy.reqInd.includes(industryIdx)) return
-    if (currentCategory.value !== '全部政策' && policy.category !== currentCategory.value) return
+    if (currentCategory.value !== 'all' && policy.category !== currentCategory.value) return
     if (currentPriority.value !== 'ALL' && policy.priority !== currentPriority.value) return
 
     const reasons: string[] = []
-    if (policy.reqProv !== 'all') reasons.push(`${province} 属地注册`)
-    if (policy.reqSizeMin > 1)    reasons.push(`规模 ${teamSize} 人 (要求≥${policy.reqSizeMin}人)`)
-    if (policy.reqCapMin > 0)     reasons.push(`资本 ${capital} 万 (要求≥${policy.reqCapMin}万)`)
-    if (policy.reqInd !== 'all')  reasons.push(`所属 ${industryName.substring(0, 4)} 等重点行业`)
-    if (reasons.length === 0)     reasons.push('符合国家普惠性中小微企业标准')
+    if (policy.reqProv !== 'all') reasons.push(t('policy.reasons.local', { province: provinceLabel(province) }))
+    if (policy.reqSizeMin > 1)    reasons.push(t('policy.reasons.size', { teamSize, min: policy.reqSizeMin }))
+    if (policy.reqCapMin > 0)     reasons.push(t('policy.reasons.capital', { capital, min: policy.reqCapMin }))
+    if (policy.reqInd !== 'all')  reasons.push(t('policy.reasons.industry', { industry: industryName }))
+    if (reasons.length === 0)     reasons.push(t('policy.reasons.universal'))
 
     list.push({ ...policy, reasons })
   })
@@ -253,16 +211,17 @@ const matchedPolicies = computed<MatchedPolicy[]>(() => {
 const matchedSum = computed(() =>
   matchedPolicies.value.reduce((s, p) => s + (typeof p.typeValue === 'number' ? p.typeValue : 0), 0),
 )
+const localeTag = computed(() => (locale.value === 'zh' ? 'zh-CN' : 'en-US'))
 
-const previewName = computed(() => `${formState.namePref || '未命名'}科技有限公司`)
+const previewName = computed(() => t('policy.previewName', { name: formState.namePref || t('policy.unnamed') }))
 
 function setCategory(c: CategoryKey) { currentCategory.value = c }
 
 function formatValue(p: PolicyDef): { prefix: string; value: string } {
   if (typeof p.maxValue === 'number') {
-    return { prefix: '最高预估', value: `¥ ${p.maxValue.toLocaleString()}` }
+    return { prefix: t('policy.card.maxPrefix'), value: `¥ ${p.maxValue.toLocaleString(localeTag.value)}` }
   }
-  return { prefix: '', value: String(p.maxValue) }
+  return { prefix: '', value: t(`policy.db.${p.id}.maxValue`) }
 }
 
 function probColor(prob: number): string {
@@ -283,66 +242,66 @@ function deadlineColor(days: number): string {
       <div class="link-left">
         <span class="dot" />
         <template v-if="isLinked && linkedFields.length">
-          <span class="link-title">已同步「智能工商注册顾问」数据</span>
-          <span class="link-fields">联动字段：{{ linkedFields.join(' / ') }}</span>
+          <span class="link-title">{{ t('policy.link.syncedTitle') }}</span>
+          <span class="link-fields">{{ t('policy.link.syncedFields', { fields: linkedFields.join(' / ') }) }}</span>
         </template>
         <template v-else>
-          <span class="link-title">未检测到工商注册数据</span>
-          <span class="link-fields">您可以在下方手动设置每个数值，触发匹配引擎</span>
+          <span class="link-title">{{ t('policy.link.notDetected') }}</span>
+          <span class="link-fields">{{ t('policy.link.manualHint') }}</span>
         </template>
       </div>
-      <button v-if="isLinked" class="link-reset" @click="resetLink">↻ 重新同步</button>
+      <button v-if="isLinked" class="link-reset" @click="resetLink">{{ t('policy.link.resync') }}</button>
     </div>
 
     <!-- 沙盘参数（已联动则默认隐藏） -->
     <div v-show="setupVisible" class="card setup-card">
       <div class="card-header">
         <div>
-          <span class="step-chip">1 / 完善企业画像，精准触发政策</span>
-          <h3 class="setup-title">动态沙盘模拟参数</h3>
-          <p class="setup-sub">修改下方参数，系统将毫秒级重算您的专属扶持政策与预估红利。</p>
+          <span class="step-chip">{{ t('policy.setup.stepChip') }}</span>
+          <h3 class="setup-title">{{ t('policy.setup.title') }}</h3>
+          <p class="setup-sub">{{ t('policy.setup.sub') }}</p>
         </div>
-        <span class="ai-badge">📡 表单动态追随</span>
+        <span class="ai-badge">{{ t('policy.setup.badge') }}</span>
       </div>
 
       <div class="setup-grid">
         <div class="field col-2">
-          <label>所属行业 (Industry)</label>
+          <label>{{ t('policy.setup.industry') }}</label>
           <select v-model.number="formState.industryIdx" @change="markOverride('industryIdx')" class="input">
             <option v-for="(name, i) in industries" :key="i" :value="i">{{ name }}</option>
           </select>
         </div>
 
         <div class="field">
-          <label>注册地 (Location)</label>
+          <label>{{ t('policy.setup.location') }}</label>
           <select v-model="formState.province" @change="markOverride('province')" class="input">
-            <option v-for="p in PROVINCES" :key="p" :value="p">{{ p }}</option>
+            <option v-for="p in PROVINCE_IDS" :key="p" :value="p">{{ provinceLabel(p) }}</option>
           </select>
         </div>
 
         <div class="field">
-          <label>企业字号 (Name)</label>
+          <label>{{ t('policy.setup.name') }}</label>
           <input class="input" v-model="formState.namePref" @input="markOverride('namePref')" />
         </div>
 
         <div class="field">
-          <label>当前规模 (Team Size)</label>
+          <label>{{ t('policy.setup.teamSize') }}</label>
           <div class="num-box">
             <input type="number" min="1" v-model.number="formState.teamSize" @input="markOverride('teamSize')" />
-            <span class="unit">人</span>
+            <span class="unit">{{ t('policy.setup.peopleUnit') }}</span>
           </div>
         </div>
 
         <div class="field">
-          <label>认缴资本 (Capital)</label>
+          <label>{{ t('policy.setup.capital') }}</label>
           <div class="num-box">
             <input type="number" min="1" v-model.number="formState.capital" @input="markOverride('capital')" />
-            <span class="unit">万元</span>
+            <span class="unit">{{ t('policy.setup.wanUnit') }}</span>
           </div>
         </div>
 
         <div class="field col-2 ready-strip">
-          <span class="ready-text">📡 数据已按最新 <b>2026</b> 年度政务标准就绪</span>
+          <span class="ready-text">{{ t('policy.setup.readyText') }}</span>
           <span class="ready-pulse"><span /><span /><span /></span>
         </div>
       </div>
@@ -353,7 +312,7 @@ function deadlineColor(days: number): string {
       <div class="sum-left">
         <div class="sum-name">
           <span class="sum-title">{{ previewName }}</span>
-          <button class="eye-btn" @click="setupVisible = !setupVisible" :title="setupVisible ? '收起参数' : '展开参数'">
+          <button class="eye-btn" @click="setupVisible = !setupVisible" :title="setupVisible ? t('policy.summary.collapse') : t('policy.summary.expand')">
             <svg v-if="!setupVisible" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
               <circle cx="12" cy="12" r="3" />
@@ -367,24 +326,24 @@ function deadlineColor(days: number): string {
           </button>
         </div>
         <div class="sum-meta">
-          注册地：<b>{{ formState.province }}</b>
+          {{ t('policy.summary.regLoc') }}<b>{{ provinceLabel(formState.province) }}</b>
           <span class="sep">·</span>
-          行业：<b>{{ industries[formState.industryIdx] }}</b>
+          {{ t('policy.summary.industry') }}<b>{{ industries[formState.industryIdx] }}</b>
           <span class="sep">·</span>
-          规模 <b class="em">{{ formState.teamSize }}</b> 人
+          {{ t('policy.summary.scalePre') }}<b class="em">{{ formState.teamSize }}</b>{{ t('policy.summary.scalePost') }}
           <span class="sep">·</span>
-          认缴 <b class="em">{{ formState.capital }}</b> 万
+          {{ t('policy.summary.capitalPre') }}<b class="em">{{ formState.capital }}</b>{{ t('policy.summary.capitalPost') }}
         </div>
       </div>
 
       <div class="sum-right">
         <div class="sum-stat">
-          <div class="sum-stat-label">匹配政策总数</div>
-          <div class="sum-stat-val">{{ matchedPolicies.length }} <span>项</span></div>
+          <div class="sum-stat-label">{{ t('policy.summary.matchedCount') }}</div>
+          <div class="sum-stat-val">{{ matchedPolicies.length }} <span>{{ t('policy.summary.matchedUnit') }}</span></div>
         </div>
         <div class="sum-stat danger">
-          <div class="sum-stat-label">可触达最高红利</div>
-          <div class="sum-stat-val red">¥ {{ matchedSum.toLocaleString() }}</div>
+          <div class="sum-stat-label">{{ t('policy.summary.maxBenefit') }}</div>
+          <div class="sum-stat-val red">¥ {{ matchedSum.toLocaleString(localeTag) }}</div>
         </div>
       </div>
     </div>
@@ -399,24 +358,24 @@ function deadlineColor(days: number): string {
           :class="{ active: currentCategory === cat }"
           :style="currentCategory === cat ? { color: policyCategories[cat].hex, borderColor: policyCategories[cat].border } : {}"
           @click="setCategory(cat)"
-        >{{ cat }}</button>
+        >{{ categoryLabel(cat) }}</button>
       </div>
 
       <div class="filters">
         <div class="select-wrap">
           <select v-model="currentPriority" class="input">
-            <option value="ALL">全部优先级</option>
-            <option value="P0">P0 立即申请</option>
-            <option value="P1">P1 本季度重点</option>
-            <option value="P2">P2 长期规划</option>
+            <option value="ALL">{{ t('policy.filters.allPriority') }}</option>
+            <option value="P0">{{ t('policy.priority.P0') }}</option>
+            <option value="P1">{{ t('policy.priority.P1') }}</option>
+            <option value="P2">{{ t('policy.priority.P2') }}</option>
           </select>
         </div>
         <div class="select-wrap">
           <select v-model="currentSort" class="input">
-            <option value="priority">默认排序 (按优先级)</option>
-            <option value="amountDesc">红利金额 (从高到低)</option>
-            <option value="probDesc">获批概率 (从高到低)</option>
-            <option value="deadlineAsc">截止日期 (从近到远)</option>
+            <option value="priority">{{ t('policy.filters.sortPriority') }}</option>
+            <option value="amountDesc">{{ t('policy.filters.sortAmount') }}</option>
+            <option value="probDesc">{{ t('policy.filters.sortProb') }}</option>
+            <option value="deadlineAsc">{{ t('policy.filters.sortDeadline') }}</option>
           </select>
         </div>
       </div>
@@ -425,8 +384,8 @@ function deadlineColor(days: number): string {
     <!-- 政策卡片 -->
     <div v-if="matchedPolicies.length === 0" class="empty">
       <div class="empty-ico">📭</div>
-      <h4>当前筛选条件下暂无匹配政策</h4>
-      <p>尝试放宽优先级或切换政策类别，也可以在沙盘中调整企业参数以解锁更多政策。</p>
+      <h4>{{ t('policy.empty.title') }}</h4>
+      <p>{{ t('policy.empty.desc') }}</p>
     </div>
 
     <div v-else class="policy-grid">
@@ -437,11 +396,11 @@ function deadlineColor(days: number): string {
         :style="{ borderLeftColor: policyCategories[policy.category].hex }"
       >
         <div class="pc-head">
-          <h4 class="pc-title">{{ policy.title }}</h4>
+          <h4 class="pc-title">{{ pTitle(policy) }}</h4>
           <span
             class="pc-priority"
             :style="{ color: priorityStyles[policy.priority].color, background: priorityStyles[policy.priority].bg, borderColor: priorityStyles[policy.priority].border }"
-          >{{ priorityStyles[policy.priority].text }}</span>
+          >{{ priorityLabel(policy.priority) }}</span>
         </div>
 
         <div class="pc-board">
@@ -449,24 +408,24 @@ function deadlineColor(days: number): string {
             <div class="pc-value">
               <span v-if="formatValue(policy).prefix" class="pc-value-prefix">{{ formatValue(policy).prefix }}</span>
               <span class="pc-value-num" :style="{ color: policyCategories[policy.category].hex }">{{ formatValue(policy).value }}</span>
-              <span class="pc-value-unit">/ {{ policy.valueUnit }}</span>
+              <span class="pc-value-unit">{{ t('policy.card.perUnit', { unit: pUnit(policy) }) }}</span>
             </div>
             <div class="pc-deadline">
-              <div class="pc-deadline-label">距截止</div>
+              <div class="pc-deadline-label">{{ t('policy.card.deadlineLabel') }}</div>
               <div class="pc-deadline-num" :style="{ color: deadlineColor(policy.deadlineDays) }">
-                <span v-if="policy.deadlineDays <= 15" class="fire">🔥</span>{{ policy.deadlineDays }} <span class="dim">天</span>
+                <span v-if="policy.deadlineDays <= 15" class="fire">🔥</span>{{ policy.deadlineDays }} <span class="dim">{{ t('policy.card.days') }}</span>
               </div>
             </div>
           </div>
           <div class="pc-board-bottom">
-            <span>通过率：<b :style="{ color: probColor(policy.prob) }">{{ policy.prob }}%</b></span>
+            <span>{{ t('policy.card.prob') }}<b :style="{ color: probColor(policy.prob) }">{{ policy.prob }}%</b></span>
             <span class="sep">·</span>
-            <span>周期：<b>{{ policy.cycle }}</b></span>
+            <span>{{ t('policy.card.cycle') }}<b>{{ pCycle(policy) }}</b></span>
           </div>
         </div>
 
         <div class="pc-reasons">
-          <div class="pc-reasons-title">✨ AI 动态参数匹配</div>
+          <div class="pc-reasons-title">{{ t('policy.card.aiMatch') }}</div>
           <div class="pc-reasons-list">
             <span v-for="(r, idx) in policy.reasons" :key="idx" class="pc-reason">
               <span class="check">✓</span>{{ r }}
@@ -474,20 +433,20 @@ function deadlineColor(days: number): string {
           </div>
         </div>
 
-        <p class="pc-desc">{{ policy.desc }}</p>
+        <p class="pc-desc">{{ pDesc(policy) }}</p>
 
         <div class="pc-foot">
           <div class="pc-dept" :style="{ color: policyCategories[policy.category].hex }">
-            🏛️ <span>{{ policy.department }}</span>
+            🏛️ <span>{{ pDept(policy) }}</span>
           </div>
-          <button class="pc-apply">启动申报 →</button>
+          <button class="pc-apply">{{ t('policy.card.apply') }}</button>
         </div>
       </div>
     </div>
 
     <div class="ai-disclaimer">
       <span class="ai-disclaimer-icon">⚠️</span>
-      <p><b>AI生成风险提示</b>：内容基于现行法律法规，具体操作请结合当地市场监管部门、银行及税务机关的最新要求执行，建议在重大决策前咨询专业律师或行业顾问。</p>
+      <p><b>{{ t('common.aiRiskTitle') }}</b>{{ t('common.aiRiskSep') }}{{ t('common.aiRiskDesc') }}</p>
     </div>
   </div>
 </template>

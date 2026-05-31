@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { apiFetch } from '../api/client'
+
+const { t, tm } = useI18n()
 
 type DocumentMeta = {
   id: string
@@ -11,14 +15,12 @@ type DocumentMeta = {
 
 type TemplateCard = {
   icon: string
-  title: string
-  sub: string
   fileId: string
 }
 
 type TemplateGroup = {
   icon: string
-  title: string
+  id: string
   cards: TemplateCard[]
 }
 
@@ -26,7 +28,9 @@ const today = new Date()
 const currentYear = ref(today.getFullYear())
 const currentMonth = ref(today.getMonth())
 
-const monthName = computed(() => `${currentYear.value}年${currentMonth.value + 1}月`)
+const monthName = computed(() =>
+  t('legal.monthLabel', { year: currentYear.value, month: (tm('legal.months') as string[])[currentMonth.value] }),
+)
 
 function prevMonth() {
   if (currentMonth.value === 0) { currentMonth.value = 11; currentYear.value-- }
@@ -55,11 +59,13 @@ const reminders = computed(() => {
   if (next15.getTime() <= base) next15 = new Date(today.getFullYear(), today.getMonth() + 1, 15)
   const taxDays = Math.round((next15.getTime() - base) / 86400000)
   return [
-    { label: '工商年报截止', date: '2026年6月30日', days: daysUntil(5, 30), icon: '📆' },
-    { label: '申报纳税截止', date: '每月15日', days: taxDays, icon: '📊' },
-    { label: '社保汇缴申报', date: '每月15日', days: taxDays, icon: '🏦' },
+    { label: t('legal.reminders.annualReport.label'), date: t('legal.reminders.annualReport.date'), days: daysUntil(5, 30), icon: '📆' },
+    { label: t('legal.reminders.taxFiling.label'), date: t('legal.reminders.taxFiling.date'), days: taxDays, icon: '📊' },
+    { label: t('legal.reminders.socialSecurity.label'), date: t('legal.reminders.socialSecurity.date'), days: taxDays, icon: '🏦' },
   ]
 })
+
+const weekdays = computed(() => tm('legal.weekdays') as string[])
 
 const calendarDays = computed(() => {
   const year = currentYear.value
@@ -80,46 +86,50 @@ const calendarDays = computed(() => {
 const documents = ref<Record<string, DocumentMeta>>({})
 const documentsLoading = ref(true)
 
+// 分组与卡片：id/icon/fileId 稳定，标题/副标题随语言切换（走 t('legal.groups.*') / t('legal.cards.<fileId>.*')）
 const groups: TemplateGroup[] = [
   {
-    icon: 'fas fa-user-check', title: '招人才',
+    icon: 'fas fa-user-check', id: 'hire',
     cards: [
-      { icon: 'fas fa-envelope-open-text', title: 'Offer letter', sub: '录用意向书', fileId: 'offer-letter' },
-      { icon: 'fas fa-clipboard-list', title: '录用条件确认书', sub: '试用期标准', fileId: 'employment-condition' },
-      { icon: 'fas fa-id-card', title: '新员工入职登记表', sub: '员工档案', fileId: 'onboarding-form' },
-      { icon: 'fas fa-pen-to-square', title: '应聘登记表', sub: '候选人信息', fileId: 'application-form' },
+      { icon: 'fas fa-envelope-open-text', fileId: 'offer-letter' },
+      { icon: 'fas fa-clipboard-list', fileId: 'employment-condition' },
+      { icon: 'fas fa-id-card', fileId: 'onboarding-form' },
+      { icon: 'fas fa-pen-to-square', fileId: 'application-form' },
     ],
   },
   {
-    icon: 'fas fa-handshake', title: '签合同',
+    icon: 'fas fa-handshake', id: 'contract',
     cards: [
-      { icon: 'fas fa-file-contract', title: '劳动合同', sub: '正式/固定期限', fileId: 'labor-contract' },
-      { icon: 'fas fa-user-friends', title: '非全日制用工协议书', sub: '兼职用工', fileId: 'part-time-agreement' },
-      { icon: 'fas fa-lock', title: '保密协议', sub: '商业机密', fileId: 'confidentiality-agreement' },
-      { icon: 'fas fa-ban', title: '竞业限制协议', sub: '高管约束', fileId: 'non-compete-agreement' },
+      { icon: 'fas fa-file-contract', fileId: 'labor-contract' },
+      { icon: 'fas fa-user-friends', fileId: 'part-time-agreement' },
+      { icon: 'fas fa-lock', fileId: 'confidentiality-agreement' },
+      { icon: 'fas fa-ban', fileId: 'non-compete-agreement' },
     ],
   },
   {
-    icon: 'fas fa-chart-simple', title: '做管理',
+    icon: 'fas fa-chart-simple', id: 'manage',
     cards: [
-      { icon: 'fas fa-table-list', title: '工资表', sub: '薪酬模板', fileId: 'salary-table' },
-      { icon: 'fas fa-calendar-week', title: '考勤表', sub: '月度统计', fileId: 'attendance-sheet' },
-      { icon: 'fas fa-book', title: '考勤休假管理制度', sub: '制度范本', fileId: 'attendance-leave-policy' },
-      { icon: 'fas fa-address-book', title: '职工名册', sub: '花名册合规', fileId: 'employee-roster' },
-      { icon: 'fas fa-building', title: '员工管理手册', sub: '通用制度', fileId: 'employee-handbook' },
-      { icon: 'fas fa-chart-line', title: '绩效评估报告', sub: 'KPI考核', fileId: 'performance-review' },
+      { icon: 'fas fa-table-list', fileId: 'salary-table' },
+      { icon: 'fas fa-calendar-week', fileId: 'attendance-sheet' },
+      { icon: 'fas fa-book', fileId: 'attendance-leave-policy' },
+      { icon: 'fas fa-address-book', fileId: 'employee-roster' },
+      { icon: 'fas fa-building', fileId: 'employee-handbook' },
+      { icon: 'fas fa-chart-line', fileId: 'performance-review' },
     ],
   },
   {
-    icon: 'fas fa-door-open', title: '办离职',
+    icon: 'fas fa-door-open', id: 'offboard',
     cards: [
-      { icon: 'fas fa-user-minus', title: '员工离职审批表（辞职）', sub: '主动离职', fileId: 'resignation-approval' },
-      { icon: 'fas fa-user-xmark', title: '员工离职审批表（辞退）', sub: '辞退流程', fileId: 'dismissal-approval' },
-      { icon: 'fas fa-certificate', title: '离职证明', sub: '法定凭证', fileId: 'departure-certificate' },
-      { icon: 'fas fa-file-circle-xmark', title: '终止劳动合同通知书', sub: '合同到期/解除', fileId: 'contract-termination-notice' },
+      { icon: 'fas fa-user-minus', fileId: 'resignation-approval' },
+      { icon: 'fas fa-user-xmark', fileId: 'dismissal-approval' },
+      { icon: 'fas fa-certificate', fileId: 'departure-certificate' },
+      { icon: 'fas fa-file-circle-xmark', fileId: 'contract-termination-notice' },
     ],
   },
 ]
+
+const cardTitle = (fileId: string) => t(`legal.cards.${fileId}.title`)
+const cardSub = (fileId: string) => t(`legal.cards.${fileId}.sub`)
 
 const toastMessage = ref('')
 let toastTimer: number | undefined
@@ -146,13 +156,13 @@ function isCardAvailable(card: TemplateCard) {
 
 async function loadDocuments() {
   try {
-    const response = await fetch('/api/documents')
-    if (!response.ok) throw new Error('文书目录加载失败')
+    const response = await apiFetch('/api/documents')
+    if (!response.ok) throw new Error('documents catalog load failed')
     const payload = await response.json() as { documents: DocumentMeta[] }
     documents.value = Object.fromEntries(payload.documents.map(document => [document.id, document]))
   } catch (error) {
     console.error(error)
-    showToast('文书目录暂时无法加载，请稍后重试')
+    showToast(t('legal.toast.catalogFail'))
   } finally {
     documentsLoading.value = false
   }
@@ -161,17 +171,17 @@ async function loadDocuments() {
 function handleDocumentDownload(card: TemplateCard) {
   const document = documents.value[card.fileId]
   if (!isCardAvailable(card)) {
-    showToast(`未找到文件：${card.title}`)
+    showToast(t('legal.toast.notFound', { title: cardTitle(card.fileId) }))
     return
   }
 
   startDownload(document?.downloadUrl ?? `/api/documents/${card.fileId}/download`, document?.filename)
-  showToast(`正在下载：${card.title}`)
+  showToast(t('legal.toast.downloading', { title: cardTitle(card.fileId) }))
 }
 
 function handleDownloadAll() {
-  startDownload('/api/documents/download-all', '高频合同与文书模板.zip')
-  showToast('正在打包下载全套合同/制度/表单模板')
+  startDownload('/api/documents/download-all', t('legal.download.zipName'))
+  showToast(t('legal.download.toastAll'))
 }
 
 onMounted(loadDocuments)
@@ -184,11 +194,11 @@ onMounted(loadDocuments)
       <!-- 左侧：高频合同与文书 -->
       <div class="templates-section">
         <div class="section-header">
-          <h2 class="section-h2"><i class="fas fa-file-signature"></i> 高频合同与文书</h2>
+          <h2 class="section-h2"><i class="fas fa-file-signature"></i> {{ t('legal.sectionTitle') }}</h2>
         </div>
 
-        <div v-for="g in groups" :key="g.title" class="group-block">
-          <div class="group-title"><i :class="g.icon"></i> {{ g.title }}</div>
+        <div v-for="g in groups" :key="g.id" class="group-block">
+          <div class="group-title"><i :class="g.icon"></i> {{ t('legal.groups.' + g.id) }}</div>
           <div class="cards-grid">
             <button
               v-for="c in g.cards"
@@ -200,15 +210,15 @@ onMounted(loadDocuments)
               @click="handleDocumentDownload(c)"
             >
               <i :class="c.icon"></i>
-              <h4>{{ c.title }}</h4>
-              <p>{{ c.sub }}</p>
+              <h4>{{ cardTitle(c.fileId) }}</h4>
+              <p>{{ cardSub(c.fileId) }}</p>
             </button>
           </div>
         </div>
 
         <div class="ai-disclaimer compact">
           <span class="ai-disclaimer-icon">⚠️</span>
-          <p><b>AI生成风险提示</b>：文书模板仅供参考，正式使用前请咨询专业律师审核。</p>
+          <p><b>{{ t('common.aiRiskTitle') }}</b>{{ t('common.aiRiskSep') }}{{ t('legal.disclaimer') }}</p>
         </div>
       </div>
 
@@ -217,7 +227,7 @@ onMounted(loadDocuments)
         <!-- 合规倒计时 -->
         <div class="sidebar-card">
           <div class="card-head">
-            <span><i class="fas fa-hourglass-half"></i> 合规倒计时</span>
+            <span><i class="fas fa-hourglass-half"></i> {{ t('legal.sidebar.countdownTitle') }}</span>
             <i class="fas fa-bell"></i>
           </div>
           <div class="deadline-list">
@@ -227,18 +237,18 @@ onMounted(loadDocuments)
                 <span class="deadline-date">{{ r.date }}</span>
               </div>
               <div :class="['countdown', r.days <= 7 ? 'urgent' : r.days <= 15 ? 'soon' : '']">
-                {{ r.days }}天
+                {{ r.days }}{{ t('legal.daysSuffix') }}
               </div>
             </div>
           </div>
-          <div class="deadline-hint">⏱️ 逾期将影响企业信用评级</div>
+          <div class="deadline-hint">{{ t('legal.sidebar.countdownHint') }}</div>
         </div>
 
         <!-- 合规日历 -->
         <div class="sidebar-card">
           <div class="card-head">
-            <span><i class="fas fa-calendar-alt"></i> 合规日历</span>
-            <span class="view-link" style="background:none;padding:0;font-size:12px;">查看全部 <i class="fas fa-chevron-right"></i></span>
+            <span><i class="fas fa-calendar-alt"></i> {{ t('legal.sidebar.calendarTitle') }}</span>
+            <span class="view-link" style="background:none;padding:0;font-size:12px;">{{ t('legal.sidebar.viewAll') }} <i class="fas fa-chevron-right"></i></span>
           </div>
           <div class="cal-nav">
             <span class="cal-month-label">{{ monthName }}</span>
@@ -248,15 +258,15 @@ onMounted(loadDocuments)
             </div>
           </div>
           <div class="cal-grid">
-            <div v-for="d in ['一','二','三','四','五','六','日']" :key="d" class="cal-weekday">{{ d }}</div>
+            <div v-for="(d, di) in weekdays" :key="di" class="cal-weekday">{{ d }}</div>
             <div
               v-for="(cell, i) in calendarDays" :key="i"
               :class="['cal-day', { event: cell.hasEvent && !cell.isToday, today: cell.isToday, empty: !cell.day }]"
             >{{ cell.day ?? '' }}</div>
           </div>
           <div class="cal-legend">
-            <span class="legend-item"><span class="dot event-dot"></span>截止日</span>
-            <span class="legend-item"><span class="dot today-dot"></span>今日</span>
+            <span class="legend-item"><span class="dot event-dot"></span>{{ t('legal.sidebar.legendDeadline') }}</span>
+            <span class="legend-item"><span class="dot today-dot"></span>{{ t('legal.sidebar.legendToday') }}</span>
           </div>
         </div>
 
@@ -264,11 +274,11 @@ onMounted(loadDocuments)
         <div class="download-card">
           <button class="download-btn" @click="handleDownloadAll">
             <i class="fas fa-download"></i>
-            <span>📁 一键下载全套模板</span>
+            <span>{{ t('legal.download.btn') }}</span>
             <i class="fas fa-arrow-right arrow-icon"></i>
           </button>
           <div class="download-hint">
-            <i class="fas fa-file-zipper"></i> 含合同、协议、制度、表单等56份标准文书
+            <i class="fas fa-file-zipper"></i> {{ t('legal.download.hint') }}
           </div>
         </div>
       </div>

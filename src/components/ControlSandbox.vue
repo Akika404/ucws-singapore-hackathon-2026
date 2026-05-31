@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Chart, registerables } from 'chart.js'
 import type { ChartType } from 'chart.js'
 import { sharedFormData } from '../store'
+
+const { t, tm, locale } = useI18n()
 
 Chart.register(...registerables)
 
 /* ---------------- 行业 / 成本矩阵 ---------------- */
 
-const industries = [
-  '农、林、牧、渔业', '采矿业', '制造业', '电力、热力、燃气及水生产和供应业', '建筑业',
-  '批发和零售业', '交通运输、仓储和邮政业', '住宿和餐饮业', '信息传输、软件和信息技术服务业', '金融业',
-  '房地产业', '租赁和商务服务业', '科学研究和技术服务业', '水利、环境和公共设施管理业', '居民服务、修理和其他服务业',
-  '教育', '卫生和社会工作', '文化、体育和娱乐业', '公共管理、社会保障和社会组织', '国际组织',
-]
+// 行业名（仅展示，随语言切换）；逻辑用 industryIdx，与列表顺序一一对应
+const industries = computed(() => tm('control.industries') as string[])
 
 type Tier = '0–10%' | '10–30%' | '30%以上'
 
+// 成本科目：cat = 一级体系 id（语言无关），key = 科目 id（语言无关），values = 行业档位
 interface CostRow {
-  category: string
-  item: string
+  cat: string
+  key: string
   values: Tier[]
 }
 
@@ -29,60 +29,66 @@ function normTier(v: string): Tier {
   return '0–10%'
 }
 
-const RAW_STRUCTURE: { category: string; item: string; values: string[] }[] = [
-  { category: '合规与制度成本', item: '注册/设立/基础合规', values: ['10–30%','30%以上','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','10–30%','30%以上','30%以上','10–30%','10–30%','30%以上','0–10%','10–30%','30%以上','10–30%','30%以上','30%以上'] },
-  { category: '合规与制度成本', item: '行业资质/许可证', values: ['10–30%','30%以上','30%以上','30%以上','30%以上','0–10%','30%以上','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','30%以上','30%以上','10–30%','30%以上','30%以上'] },
-  { category: '合规与制度成本', item: '法律/税务基础服务', values: ['10–30%','30%以上','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%','30%','30%以上','10–30%','10–30%','10–30%','0–10%','10–30%','10–30%','10–30%','30%以上','30%以上'] },
-  { category: '空间与基础设施成本', item: '办公租金', values: ['0–10%','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','30%以上','10–30%','30%以上','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','10–30%','10–30%'] },
-  { category: '空间与基础设施成本', item: '门店/工厂/仓库', values: ['10–30%','30%以上','30%以上','30%以上','10–30%','30%以上','30%以上','30%以上','0–10%','0–10%','30%以上','10–30%','0–10%','10–30%','10–30%','0–10%','30%以上','10–30%','0–10%','0–10%'] },
-  { category: '空间与基础设施成本', item: '设备折旧/硬件资产', values: ['10–30%','30%以上','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','0–10%','10–30%','30%以上','10–30%','10–30%','30%以上','10–30%','10–30%','10–30%'] },
-  { category: '空间与基础设施成本', item: '仓储/冷链/物理设施', values: ['30%以上','10–30%','30%以上','10–30%','10–30%','30%以上','30%以上','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','0–10%'] },
-  { category: '数字化与软件成本', item: 'SaaS订阅（CRM/ERP/HRM）', values: ['0–10%','0–10%','10–30%','10–30%','10–30%','10–30%','10–30%','0–10%','30%以上','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%'] },
-  { category: '数字化与软件成本', item: '云服务/服务器/CDN', values: ['0–10%','0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','0–10%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','30%以上','10–30%','30%以上'] },
-  { category: '数字化与软件成本', item: '系统开发/DevOps/IT工具', values: ['0–10%','0–10%','10–30%','10–30%','0–10%','0–10%','10–30%','0–10%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','30%以上','10–30%','30%以上'] },
-  { category: '数字化与软件成本', item: 'API/AI工具/自动化', values: ['0–10%','0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','0–10%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','30%以上','10–30%','30%以上'] },
-  { category: '人力与组织运营成本', item: '人力成本（核心团队）', values: ['10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','10–30%','30%以上','30%以上','30%以上','10–30%','30%以上','30%以上','10–30%','30%以上','30%以上','30%以上','30%以上','30%以上','30%以上'] },
-  { category: '人力与组织运营成本', item: '客服/售后', values: ['0–10%','0–10%','10–30%','10–30%','10–30%','30%以上','30%以上','30%以上','10–30%','30%以上','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','30%以上','10–30%','10–30%','10–30%'] },
-  { category: '人力与组织运营成本', item: '运营管理成本', values: ['10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','30%','30%以上','30%以上','30%以上','30%以上','30%以上','30%以上','30%以上','10–30%','30%以上','30%以上','30%以上','30%以上','30%以上'] },
-  { category: '人力与组织运营成本', item: '差旅/培训', values: ['0–10%','10–30%','10–30%','0–10%','30%以上','0–10%','10–30%','0–10%','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','10–30%','10–30%','30%以上'] },
-  { category: '增长与市场获取成本', item: '广告投放/获客', values: ['0–10%','0–10%','10–30%','0–10%','0–10%','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','0–10%','10–30%','30%以上','0–10%','30%以上','0–10%','0–10%'] },
-  { category: '增长与市场获取成本', item: '渠道/平台佣金', values: ['0–10%','0–10%','10–30%','0–10%','0–10%','30%以上','10–30%','30%以上','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','10–30%','10–30%','0–10%','30%以上','0–10%','0–10%'] },
-  { category: '增长与市场获取成本', item: '销售佣金', values: ['0–10%','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','10–30%','30%以上','30%以上','30%以上','30%以上','10–30%','0–10%','10–30%','10–30%','0–10%','30%以上','0–10%','0–10%'] },
-  { category: '增长与市场获取成本', item: '品牌/内容营销', values: ['0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','0–10%','10–30%','30%以上','0–10%','30%以上','0–10%','10–30%'] },
-  { category: '风险与损耗成本', item: '退货/损耗/坏账', values: ['30%以上','10–30%','10–30%','0–10%','10–30%','30%以上','10–30%','30%以上','0–10%','10–30%','10–30%','0–10%','0–10%','0–10%','10–30%','0–10%','10–30%','10–30%','0–10%','0–10%'] },
-  { category: '风险与损耗成本', item: '库存积压/浪费', values: ['30%以上','10–30%','30%以上','10–30%','0–10%','30%以上','10–30%','30%以上','0–10%','0–10%','30%以上','0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','0–10%','0–10%','0–10%'] },
-  { category: '风险与损耗成本', item: '法律风险/罚款', values: ['10–30%','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','30%以上','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','10–30%','30%以上','10–30%','30%以上','30%以上'] },
-  { category: '风险与损耗成本', item: '保险/汇率/波动损失', values: ['30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','0–10%','30%以上','10–30%','10–30%','0–10%','10–30%','0–10%','0–10%','10–30%','10–30%','0–10%','30%以上'] },
+const RAW_STRUCTURE: { cat: string; key: string; values: string[] }[] = [
+  { cat: 'compliance', key: 'regCompliance', values: ['10–30%','30%以上','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','10–30%','30%以上','30%以上','10–30%','10–30%','30%以上','0–10%','10–30%','30%以上','10–30%','30%以上','30%以上'] },
+  { cat: 'compliance', key: 'license', values: ['10–30%','30%以上','30%以上','30%以上','30%以上','0–10%','30%以上','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','30%以上','30%以上','10–30%','30%以上','30%以上'] },
+  { cat: 'compliance', key: 'legalTaxBasic', values: ['10–30%','30%以上','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%','30%','30%以上','10–30%','10–30%','10–30%','0–10%','10–30%','10–30%','10–30%','30%以上','30%以上'] },
+  { cat: 'space', key: 'officeRent', values: ['0–10%','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','30%以上','10–30%','30%以上','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','10–30%','10–30%'] },
+  { cat: 'space', key: 'storeFactory', values: ['10–30%','30%以上','30%以上','30%以上','10–30%','30%以上','30%以上','30%以上','0–10%','0–10%','30%以上','10–30%','0–10%','10–30%','10–30%','0–10%','30%以上','10–30%','0–10%','0–10%'] },
+  { cat: 'space', key: 'equipment', values: ['10–30%','30%以上','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','0–10%','10–30%','30%以上','10–30%','10–30%','30%以上','10–30%','10–30%','10–30%'] },
+  { cat: 'space', key: 'warehouse', values: ['30%以上','10–30%','30%以上','10–30%','10–30%','30%以上','30%以上','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','0–10%'] },
+  { cat: 'digital', key: 'saas', values: ['0–10%','0–10%','10–30%','10–30%','10–30%','10–30%','10–30%','0–10%','30%以上','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%','10–30%'] },
+  { cat: 'digital', key: 'cloud', values: ['0–10%','0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','0–10%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','30%以上','10–30%','30%以上'] },
+  { cat: 'digital', key: 'devops', values: ['0–10%','0–10%','10–30%','10–30%','0–10%','0–10%','10–30%','0–10%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','30%以上','10–30%','30%以上'] },
+  { cat: 'digital', key: 'apiAi', values: ['0–10%','0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','0–10%','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','30%以上','10–30%','30%以上'] },
+  { cat: 'people', key: 'coreHR', values: ['10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','10–30%','30%以上','30%以上','30%以上','10–30%','30%以上','30%以上','10–30%','30%以上','30%以上','30%以上','30%以上','30%以上','30%以上'] },
+  { cat: 'people', key: 'support', values: ['0–10%','0–10%','10–30%','10–30%','10–30%','30%以上','30%以上','30%以上','10–30%','30%以上','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','30%以上','10–30%','10–30%','10–30%'] },
+  { cat: 'people', key: 'opsMgmt', values: ['10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','30%','30%以上','30%以上','30%以上','30%以上','30%以上','30%以上','30%以上','10–30%','30%以上','30%以上','30%以上','30%以上','30%以上'] },
+  { cat: 'people', key: 'travelTraining', values: ['0–10%','10–30%','10–30%','0–10%','30%以上','0–10%','10–30%','0–10%','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','0–10%','10–30%','10–30%','10–30%','10–30%','30%以上'] },
+  { cat: 'growth', key: 'ads', values: ['0–10%','0–10%','10–30%','0–10%','0–10%','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','0–10%','10–30%','30%以上','0–10%','30%以上','0–10%','0–10%'] },
+  { cat: 'growth', key: 'channelCommission', values: ['0–10%','0–10%','10–30%','0–10%','0–10%','30%以上','10–30%','30%以上','10–30%','0–10%','0–10%','10–30%','0–10%','0–10%','10–30%','10–30%','0–10%','30%以上','0–10%','0–10%'] },
+  { cat: 'growth', key: 'salesCommission', values: ['0–10%','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','10–30%','30%以上','30%以上','30%以上','30%以上','10–30%','0–10%','10–30%','10–30%','0–10%','30%以上','0–10%','0–10%'] },
+  { cat: 'growth', key: 'brandContent', values: ['0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','0–10%','10–30%','30%以上','0–10%','30%以上','0–10%','10–30%'] },
+  { cat: 'risk', key: 'returnsLoss', values: ['30%以上','10–30%','10–30%','0–10%','10–30%','30%以上','10–30%','30%以上','0–10%','10–30%','10–30%','0–10%','0–10%','0–10%','10–30%','0–10%','10–30%','10–30%','0–10%','0–10%'] },
+  { cat: 'risk', key: 'inventory', values: ['30%以上','10–30%','30%以上','10–30%','0–10%','30%以上','10–30%','30%以上','0–10%','0–10%','30%以上','0–10%','0–10%','0–10%','0–10%','0–10%','10–30%','0–10%','0–10%','0–10%'] },
+  { cat: 'risk', key: 'legalRiskFine', values: ['10–30%','30%以上','10–30%','30%以上','30%以上','10–30%','10–30%','10–30%','30%以上','30%以上','30%以上','10–30%','10–30%','30%以上','10–30%','10–30%','30%以上','10–30%','30%以上','30%以上'] },
+  { cat: 'risk', key: 'insuranceFx', values: ['30%以上','30%以上','10–30%','10–30%','10–30%','10–30%','30%以上','10–30%','0–10%','30%以上','10–30%','10–30%','0–10%','10–30%','0–10%','0–10%','10–30%','10–30%','0–10%','30%以上'] },
 ]
 
 const costStructure: CostRow[] = RAW_STRUCTURE.map(r => ({
-  category: r.category,
-  item: r.item,
+  cat: r.cat,
+  key: r.key,
   values: r.values.map(normTier) as Tier[],
 }))
 
-interface CategoryMeta { icon: string; color: string; hex: string }
+// 一级体系：id → 图标/配色（语言无关）；显示名走 t('control.categories.'+id)
+interface CategoryMeta { icon: string; hex: string }
 const categoriesMeta: Record<string, CategoryMeta> = {
-  '合规与制度成本':     { icon: '⚖️', color: '#6366f1', hex: '#6366f1' },
-  '空间与基础设施成本': { icon: '🏢', color: '#3b82f6', hex: '#3b82f6' },
-  '数字化与软件成本':   { icon: '💻', color: '#06b6d4', hex: '#06b6d4' },
-  '人力与组织运营成本': { icon: '👥', color: '#10b981', hex: '#10b981' },
-  '增长与市场获取成本': { icon: '📈', color: '#f59e0b', hex: '#f59e0b' },
-  '风险与损耗成本':     { icon: '🛡️', color: '#f43f5e', hex: '#f43f5e' },
+  compliance: { icon: '⚖️', hex: '#6366f1' },
+  space:      { icon: '🏢', hex: '#3b82f6' },
+  digital:    { icon: '💻', hex: '#06b6d4' },
+  people:     { icon: '👥', hex: '#10b981' },
+  growth:     { icon: '📈', hex: '#f59e0b' },
+  risk:       { icon: '🛡️', hex: '#f43f5e' },
 }
 const categoryOrder = Object.keys(categoriesMeta)
+const catLabel = (id: string) => t('control.categories.' + id)
+const itemLabel = (key: string) => t('control.items.' + key)
 
 /* ---------------- 表单状态 + 联动 ---------------- */
 
-const PROVINCES = ['北京市', '上海市', '广东省', '浙江省', '其他区域']
-const COMPANY_TYPES = ['有限责任公司', '股份有限公司', '合伙企业']
+// 省份 / 公司类型：id 语言无关，显示走 t()
+const PROVINCE_IDS = ['beijing', 'shanghai', 'guangdong', 'zhejiang', 'other']
+const COMPANY_TYPE_IDS = ['llc', 'jsc', 'partnership']
+const provinceLabel = (id: string) => t('control.provinces.' + id)
+const companyTypeLabel = (id: string) => t('control.companyTypes.' + id)
 
 const formState = reactive({
   industryIdx: 8,
   teamSize: 10,
   shareholder: 3,
-  province: '北京市',
-  companyType: '有限责任公司',
+  province: 'beijing',
+  companyType: 'llc',
   namePref: '星禾云创',
   capital: 100,
   scopeMain: '软件开发',
@@ -95,49 +101,59 @@ const overridden = reactive<Record<keyof typeof formState, boolean>>({
   companyType: false, namePref: false, capital: false, scopeMain: false, scopeOthers: false,
 })
 
+// 行业匹配：优先 (A)~(T) 字母前缀（语言无关），再退回中文关键词扫描
 function matchIndustryIdx(text: string): number {
   if (!text) return 8
+  const letter = text.match(/\(([A-T])\)/i)?.[1]?.toUpperCase()
+  if (letter) {
+    const idx = letter.charCodeAt(0) - 65
+    if (idx >= 0 && idx < 20) return idx
+  }
   const lower = text.toLowerCase()
   const aliases: { kws: string[]; idx: number }[] = [
-    { kws: ['农', '林', '牧', '渔'], idx: 0 },
-    { kws: ['矿'], idx: 1 },
-    { kws: ['制造', '工厂'], idx: 2 },
-    { kws: ['电力', '燃气', '水务'], idx: 3 },
-    { kws: ['建筑', '工程'], idx: 4 },
-    { kws: ['批发', '零售', '电商'], idx: 5 },
-    { kws: ['物流', '仓储', '运输', '邮政'], idx: 6 },
-    { kws: ['餐饮', '酒店', '住宿'], idx: 7 },
-    { kws: ['软件', '互联网', 'saas', 'it', '信息', '科技', '数字'], idx: 8 },
-    { kws: ['金融', '银行', '保险', '证券'], idx: 9 },
-    { kws: ['房地产', '地产'], idx: 10 },
-    { kws: ['租赁', '商务服务', '咨询'], idx: 11 },
-    { kws: ['科研', '研究', '技术服务'], idx: 12 },
-    { kws: ['环境', '环保', '公共设施'], idx: 13 },
-    { kws: ['居民服务', '维修', '修理'], idx: 14 },
-    { kws: ['教育', '培训'], idx: 15 },
-    { kws: ['卫生', '医疗', '社会工作'], idx: 16 },
-    { kws: ['文化', '体育', '娱乐'], idx: 17 },
-    { kws: ['公共管理', '社保'], idx: 18 },
-    { kws: ['国际组织'], idx: 19 },
+    { kws: ['农', '林', '牧', '渔', 'agricultur'], idx: 0 },
+    { kws: ['矿', 'mining'], idx: 1 },
+    { kws: ['制造', '工厂', 'manufactur'], idx: 2 },
+    { kws: ['电力', '燃气', '水务', 'electricity', 'gas', 'water'], idx: 3 },
+    { kws: ['建筑', '工程', 'construction'], idx: 4 },
+    { kws: ['批发', '零售', '电商', 'wholesale', 'retail'], idx: 5 },
+    { kws: ['物流', '仓储', '运输', '邮政', 'transport', 'storage', 'postal'], idx: 6 },
+    { kws: ['餐饮', '酒店', '住宿', 'catering', 'accommodation'], idx: 7 },
+    { kws: ['软件', '互联网', 'saas', 'it', '信息', '科技', '数字', 'software', 'information'], idx: 8 },
+    { kws: ['金融', '银行', '保险', '证券', 'finance'], idx: 9 },
+    { kws: ['房地产', '地产', 'real estate'], idx: 10 },
+    { kws: ['租赁', '商务服务', '咨询', 'leasing', 'business service'], idx: 11 },
+    { kws: ['科研', '研究', '技术服务', 'research', 'technical'], idx: 12 },
+    { kws: ['环境', '环保', '公共设施', 'environment', 'conservancy'], idx: 13 },
+    { kws: ['居民服务', '维修', '修理', 'residential', 'repair'], idx: 14 },
+    { kws: ['教育', '培训', 'education'], idx: 15 },
+    { kws: ['卫生', '医疗', '社会工作', 'health', 'social work'], idx: 16 },
+    { kws: ['文化', '体育', '娱乐', 'culture', 'sports', 'entertainment'], idx: 17 },
+    { kws: ['公共管理', '社保', 'public administration'], idx: 18 },
+    { kws: ['国际组织', 'international organization'], idx: 19 },
   ]
   for (const a of aliases) if (a.kws.some(k => lower.includes(k.toLowerCase()))) return a.idx
   return 8
 }
 
+// 省份匹配：返回 id，中英文皆可识别
 function matchProvince(addr: string): string {
-  if (!addr) return '其他区域'
-  if (addr.includes('北京')) return '北京市'
-  if (addr.includes('上海')) return '上海市'
-  if (addr.includes('广东') || addr.includes('深圳') || addr.includes('广州')) return '广东省'
-  if (addr.includes('浙江') || addr.includes('杭州') || addr.includes('宁波')) return '浙江省'
-  return '其他区域'
+  if (!addr) return 'other'
+  const s = addr.toLowerCase()
+  if (addr.includes('北京') || s.includes('beijing')) return 'beijing'
+  if (addr.includes('上海') || s.includes('shanghai')) return 'shanghai'
+  if (addr.includes('广东') || addr.includes('深圳') || addr.includes('广州') || s.includes('guangdong') || s.includes('shenzhen') || s.includes('guangzhou')) return 'guangdong'
+  if (addr.includes('浙江') || addr.includes('杭州') || addr.includes('宁波') || s.includes('zhejiang') || s.includes('hangzhou') || s.includes('ningbo')) return 'zhejiang'
+  return 'other'
 }
 
-function matchCompanyType(t: string): string {
-  if (!t) return '有限责任公司'
-  if (t.includes('股份')) return '股份有限公司'
-  if (t.includes('合伙')) return '合伙企业'
-  return '有限责任公司'
+// 公司类型匹配：返回 id，中英文皆可识别
+function matchCompanyType(ct: string): string {
+  if (!ct) return 'llc'
+  const s = ct.toLowerCase()
+  if (ct.includes('股份') || s.includes('joint-stock') || s.includes('joint stock')) return 'jsc'
+  if (ct.includes('合伙') || s.includes('partnership')) return 'partnership'
+  return 'llc'
 }
 
 function parseCapital(c: string): number {
@@ -152,16 +168,16 @@ const linkedFields = computed(() => {
   const f = sharedFormData.value
   if (!f) return [] as string[]
   const arr: string[] = []
-  if (f.business && !overridden.industryIdx) arr.push('行业')
-  if (typeof f.people === 'number' && f.people > 0 && !overridden.teamSize) arr.push('团队规模')
-  if (typeof f.shareholder === 'number' && f.shareholder > 0 && !overridden.shareholder) arr.push('股东人数')
-  if (f.address && !overridden.province) arr.push('注册区域')
-  if (f.companyType && !overridden.companyType) arr.push('公司类型')
-  if (f.namePref && !overridden.namePref) arr.push('企业字号')
-  if (f.capital && !overridden.capital) arr.push('认缴资本')
+  if (f.business && !overridden.industryIdx) arr.push(t('control.fieldTags.industry'))
+  if (typeof f.people === 'number' && f.people > 0 && !overridden.teamSize) arr.push(t('control.fieldTags.teamSize'))
+  if (typeof f.shareholder === 'number' && f.shareholder > 0 && !overridden.shareholder) arr.push(t('control.fieldTags.shareholder'))
+  if (f.address && !overridden.province) arr.push(t('control.fieldTags.province'))
+  if (f.companyType && !overridden.companyType) arr.push(t('control.fieldTags.companyType'))
+  if (f.namePref && !overridden.namePref) arr.push(t('control.fieldTags.namePref'))
+  if (f.capital && !overridden.capital) arr.push(t('control.fieldTags.capital'))
   if (f.scope && typeof f.scope === 'object') {
-    if (f.scope.main && !overridden.scopeMain) arr.push('主营范围')
-    if (f.scope.others?.length && !overridden.scopeOthers) arr.push('兼营范围')
+    if (f.scope.main && !overridden.scopeMain) arr.push(t('control.fieldTags.scopeMain'))
+    if (f.scope.others?.length && !overridden.scopeOthers) arr.push(t('control.fieldTags.scopeOthers'))
   }
   return arr
 })
@@ -190,14 +206,19 @@ function resetLink() {
   applyFromShared()
 }
 
-const previewName = computed(() => `${formState.namePref}科技${formState.companyType === '股份有限公司' ? '股份' : ''}有限公司`)
+const previewName = computed(() =>
+  t('control.previewName', {
+    name: formState.namePref,
+    suffix: formState.companyType === 'jsc' ? t('control.jscSuffix') : '',
+  }),
+)
 
 const setupVisible = ref(false)
 watch(isLinked, v => { setupVisible.value = !v }, { immediate: true })
 
 /* ---------------- 预算计算 ---------------- */
 
-interface BudgetItem { name: string; money: number }
+interface BudgetItem { key?: string; name: string; money: number }
 type BudgetByCategory = Record<string, BudgetItem[]>
 
 const budgetData = ref<BudgetByCategory>({})
@@ -215,8 +236,8 @@ function recomputeBudget() {
   const durationMonths = 3
   const coreHRBase = ts * baseCostPerPersonPerMonth * durationMonths
 
-  const locMul = (province === '北京市' || province === '上海市') ? 1.45
-    : province === '其他区域' ? 0.8 : 1.0
+  const locMul = (province === 'beijing' || province === 'shanghai') ? 1.45
+    : province === 'other' ? 0.8 : 1.0
 
   let totalWeight = 0
   const weights = costStructure.map(row => {
@@ -225,10 +246,10 @@ function recomputeBudget() {
     if (tier === '30%以上') w = 3.5
     else if (tier === '10–30%') w = 1.5
     totalWeight += w
-    return { category: row.category, item: row.item, weight: w }
+    return { cat: row.cat, key: row.key, weight: w }
   })
 
-  const humanCoreW = weights.find(i => i.item === '人力成本（核心团队）')!.weight
+  const humanCoreW = weights.find(i => i.key === 'coreHR')!.weight
   const initialTotal = (coreHRBase / humanCoreW) * totalWeight
 
   const next: BudgetByCategory = {}
@@ -237,19 +258,19 @@ function recomputeBudget() {
 
   weights.forEach((wi, idx) => {
     let money = (initialTotal / totalWeight) * wi.weight
-    if (wi.item === '办公租金' || wi.item === '门店/工厂/仓库') money *= locMul
-    if (wi.item === '注册/设立/基础合规' || wi.item === '法律/税务基础服务') {
+    if (wi.key === 'officeRent' || wi.key === 'storeFactory') money *= locMul
+    if (wi.key === 'regCompliance' || wi.key === 'legalTaxBasic') {
       money += sh * 1500
-      if (companyType === '股份有限公司') money *= 1.3
+      if (companyType === 'jsc') money *= 1.3
     }
-    if (wi.item === '保险/汇率/波动损失' || wi.item === '法律风险/罚款') money += cap * 20
+    if (wi.key === 'insuranceFx' || wi.key === 'legalRiskFine') money += cap * 20
 
     const noise = Math.sin(idx + industryIdx + ts) * (money * 0.04)
     let final = Math.round(money + noise)
     if (final <= 0) final = Math.round(3500 + Math.abs(Math.sin(idx) * 2000))
 
-    next[wi.category].push({ name: wi.item, money: final })
-    bench[wi.category] += final
+    next[wi.cat].push({ key: wi.key, name: itemLabel(wi.key), money: final })
+    bench[wi.cat] += final
   })
 
   budgetData.value = next
@@ -262,14 +283,15 @@ const totalBudget = computed(() =>
   categoryOrder.reduce((s, c) =>
     s + (budgetData.value[c]?.reduce((a, b) => a + b.money, 0) ?? 0), 0)
 )
-const fmt = (n: number) => '¥ ' + Math.round(n).toLocaleString('zh-CN')
+const localeTag = computed(() => (locale.value === 'zh' ? 'zh-CN' : 'en-US'))
+const fmt = (n: number) => '¥ ' + Math.round(n).toLocaleString(localeTag.value)
 
 /* ---------------- 卡片编辑 ---------------- */
 
 function toggleLock(cat: string) { cardLocked[cat] = !cardLocked[cat] }
 function addItem(cat: string) {
   const seed = Math.round(1200 + Math.random() * 8700)
-  budgetData.value[cat].push({ name: '自定义新增科目', money: seed })
+  budgetData.value[cat].push({ name: t('control.bill.customItem'), money: seed })
 }
 function deleteItem(cat: string, idx: number) {
   budgetData.value[cat].splice(idx, 1)
@@ -302,18 +324,13 @@ function rebuildCharts() {
   const pieColors: string[] = []
   cats.forEach((c, i) => {
     if (subtotals[i] > 0) {
-      pieLabels.push(c)
+      pieLabels.push(catLabel(c))
       pieData.push(subtotals[i])
       pieColors.push(categoriesMeta[c].hex)
     }
   })
 
-  const shortLabels = cats.map(c =>
-    c.replace('与基础设施成本', '')
-      .replace('与组织运营成本', '')
-      .replace('与市场获取成本', '')
-      .replace('与制度成本', '')
-      .replace('与软件成本', ''))
+  const shortLabels = cats.map(c => t('control.categoriesShort.' + c))
 
   /* doughnut */
   if (pie) {
@@ -355,8 +372,8 @@ function rebuildCharts() {
       data: {
         labels: shortLabels,
         datasets: [
-          { label: '当前方案', data: subtotals, fill: true, backgroundColor: 'rgba(22,119,255,0.15)', borderColor: '#1677ff', borderWidth: 1.8, pointBackgroundColor: '#1677ff' },
-          { label: '行业基准', data: benchSubtotals, fill: false, borderColor: 'rgba(148,163,184,0.7)', borderDash: [4, 4], pointBackgroundColor: '#94a3b8' },
+          { label: t('control.charts.current'), data: subtotals, fill: true, backgroundColor: 'rgba(22,119,255,0.15)', borderColor: '#1677ff', borderWidth: 1.8, pointBackgroundColor: '#1677ff' },
+          { label: t('control.charts.benchmark'), data: benchSubtotals, fill: false, borderColor: 'rgba(148,163,184,0.7)', borderDash: [4, 4], pointBackgroundColor: '#94a3b8' },
         ],
       },
       options: {
@@ -395,6 +412,14 @@ watch([budgetData, benchmark], () => {
   chartDebounce = window.setTimeout(rebuildCharts, 80)
 }, { deep: true })
 
+// 语言切换：重算预算（刷新科目本地化名称）并销毁重建图表（数据集 label 仅创建时生效）
+watch(locale, () => {
+  recomputeBudget()
+  pie?.destroy(); radar?.destroy(); bar?.destroy()
+  pie = radar = bar = null
+  nextTick(rebuildCharts)
+})
+
 onMounted(() => { nextTick(rebuildCharts) })
 onBeforeUnmount(() => {
   pie?.destroy(); radar?.destroy(); bar?.destroy()
@@ -405,28 +430,29 @@ onBeforeUnmount(() => {
 
 function exportCSV() {
   let csv = '﻿'
-  csv += 'Lucky OS 工商数据联动一键生成成本预算报告\n'
-  csv += `拟申报公司全称,${previewName.value}\n`
-  csv += `对标行业分区,${industries[formState.industryIdx]}\n`
-  csv += `拟注册地域,${formState.province}\n`
-  csv += `规划核心规模,${formState.teamSize} 人\n\n`
-  csv += '"成本一级体系","明细科目名称","预估首季现金流量(元)"\n'
+  csv += t('control.csv.reportTitle') + '\n'
+  csv += `${t('control.csv.fullName')},${previewName.value}\n`
+  csv += `${t('control.csv.industryZone')},${industries.value[formState.industryIdx]}\n`
+  csv += `${t('control.csv.regRegion')},${provinceLabel(formState.province)}\n`
+  csv += `${t('control.csv.coreScale')},${formState.teamSize} ${t('control.csv.peopleUnit')}\n\n`
+  csv += t('control.csv.header') + '\n'
 
   let overall = 0
   categoryOrder.forEach(cat => {
     let sub = 0
+    const cl = catLabel(cat)
     budgetData.value[cat]?.forEach(n => {
-      csv += `"${cat}","${n.name}",${n.money}\n`
+      csv += `"${cl}","${n.name}",${n.money}\n`
       sub += n.money; overall += n.money
     })
-    csv += `"${cat}","[${cat} - 小计汇总]",${sub}\n`
+    csv += `"${cl}","${t('control.csv.subtotal', { cat: cl })}",${sub}\n`
   })
-  csv += `"\n[新公司开办首季启动资产储备总需求]","",${overall}\n`
+  csv += `"\n${t('control.csv.grandTotal')}","",${overall}\n`
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
-  link.download = `LuckyOS_预算报告_${formState.namePref}_${industries[formState.industryIdx]}.csv`
+  link.download = `LuckyOS_${t('control.csv.fileReport')}_${formState.namePref}_${industries.value[formState.industryIdx]}.csv`
   document.body.appendChild(link); link.click(); document.body.removeChild(link)
 }
 </script>
@@ -438,29 +464,29 @@ function exportCSV() {
       <div class="link-left">
         <span class="dot" />
         <template v-if="isLinked && linkedFields.length">
-          <span class="link-title">已同步「智能工商注册顾问」数据</span>
+          <span class="link-title">{{ t('control.link.syncedTitle') }}</span>
         </template>
         <template v-else>
-          <span class="link-title">未检测到工商注册数据</span>
-          <span class="link-fields">您可以直接在下方手动设置每个数值</span>
+          <span class="link-title">{{ t('control.link.notDetected') }}</span>
+          <span class="link-fields">{{ t('control.link.manualHint') }}</span>
         </template>
       </div>
-      <button v-if="isLinked" class="link-reset" @click="resetLink">↻ 重新同步</button>
+      <button v-if="isLinked" class="link-reset" @click="resetLink">{{ t('control.link.resync') }}</button>
     </div>
 
     <!-- 公司设立登记信息 -->
     <div v-show="setupVisible" class="card setup-card">
       <div class="card-header">
         <div>
-          <span class="step-chip">第一步 · 规划基础行业与规模</span>
-          <h3 class="setup-title">新公司设立登记信息</h3>
+          <span class="step-chip">{{ t('control.setup.stepChip') }}</span>
+          <h3 class="setup-title">{{ t('control.setup.title') }}</h3>
         </div>
-        <span class="ai-badge">📡 表单动态追随</span>
+        <span class="ai-badge">{{ t('control.setup.badge') }}</span>
       </div>
 
       <div class="setup-grid">
         <div class="field col-2">
-          <label>对应标准行业 (business)</label>
+          <label>{{ t('control.fields.business') }}</label>
           <select v-model.number="formState.industryIdx" @change="markOverride('industryIdx')" class="input">
             <option v-for="(name, i) in industries" :key="i" :value="i">
               {{ String.fromCharCode(65 + i) }} — {{ name }}
@@ -469,55 +495,55 @@ function exportCSV() {
         </div>
 
         <div class="field">
-          <label>团队规模 (people)</label>
+          <label>{{ t('control.fields.people') }}</label>
           <div class="num-box">
             <input type="number" min="1" max="500" v-model.number="formState.teamSize" @input="markOverride('teamSize')" />
-            <span class="unit">人</span>
+            <span class="unit">{{ t('control.units.people') }}</span>
           </div>
         </div>
 
         <div class="field">
-          <label>股东人数 (shareholder)</label>
+          <label>{{ t('control.fields.shareholder') }}</label>
           <div class="num-box">
             <input type="number" min="1" max="50" v-model.number="formState.shareholder" @input="markOverride('shareholder')" />
-            <span class="unit">个</span>
+            <span class="unit">{{ t('control.units.shareholder') }}</span>
           </div>
         </div>
 
         <div class="field">
-          <label>注册区域 (province)</label>
+          <label>{{ t('control.fields.province') }}</label>
           <select v-model="formState.province" @change="markOverride('province')" class="input">
-            <option v-for="p in PROVINCES" :key="p" :value="p">{{ p }}</option>
+            <option v-for="p in PROVINCE_IDS" :key="p" :value="p">{{ provinceLabel(p) }}</option>
           </select>
         </div>
 
         <div class="field">
-          <label>公司类型 (companyType)</label>
+          <label>{{ t('control.fields.companyType') }}</label>
           <select v-model="formState.companyType" @change="markOverride('companyType')" class="input">
-            <option v-for="t in COMPANY_TYPES" :key="t" :value="t">{{ t }}</option>
+            <option v-for="ct in COMPANY_TYPE_IDS" :key="ct" :value="ct">{{ companyTypeLabel(ct) }}</option>
           </select>
         </div>
 
         <div class="field">
-          <label>企业字号 (namePref)</label>
+          <label>{{ t('control.fields.namePref') }}</label>
           <input class="input" v-model="formState.namePref" @input="markOverride('namePref')" />
         </div>
 
         <div class="field">
-          <label>认缴资本 (capital)</label>
+          <label>{{ t('control.fields.capital') }}</label>
           <div class="num-box">
             <input type="number" min="1" v-model.number="formState.capital" @input="markOverride('capital')" />
-            <span class="unit">万元</span>
+            <span class="unit">{{ t('control.units.wan') }}</span>
           </div>
         </div>
 
         <div class="field col-2">
-          <label>主营经营范围 (scope.main)</label>
+          <label>{{ t('control.fields.scopeMain') }}</label>
           <input class="input" v-model="formState.scopeMain" @input="markOverride('scopeMain')" />
         </div>
 
         <div class="field col-2">
-          <label>兼营范围摘要 (scope.others)</label>
+          <label>{{ t('control.fields.scopeOthers') }}</label>
           <input class="input" v-model="formState.scopeOthers" @input="markOverride('scopeOthers')" />
         </div>
       </div>
@@ -528,8 +554,8 @@ function exportCSV() {
       <div class="sum-left">
         <div class="sum-name">
           <span class="sum-title">{{ previewName }}</span>
-          <span class="sum-type">{{ formState.companyType }}</span>
-          <button class="eye-btn" @click="setupVisible = !setupVisible" :title="setupVisible ? '收起设立信息' : '展开设立信息'">
+          <span class="sum-type">{{ companyTypeLabel(formState.companyType) }}</span>
+          <button class="eye-btn" @click="setupVisible = !setupVisible" :title="setupVisible ? t('control.setup.collapse') : t('control.setup.expand')">
             <svg v-if="!setupVisible" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
               <circle cx="12" cy="12" r="3" />
@@ -543,39 +569,39 @@ function exportCSV() {
           </button>
         </div>
         <div class="sum-meta">
-          注册地：<b>{{ formState.province }}</b>
+          {{ t('control.summary.regLoc') }}<b>{{ provinceLabel(formState.province) }}</b>
           <span class="sep">·</span>
-          行业分区：<b>{{ industries[formState.industryIdx] }}</b>
+          {{ t('control.summary.industryZone') }}<b>{{ industries[formState.industryIdx] }}</b>
           <span class="sep">·</span>
-          组织配置：规模 <b class="em">{{ formState.teamSize }}</b> 人 / 股东 <b class="em">{{ formState.shareholder }}</b> 人
+          {{ t('control.summary.orgPre') }}<b class="em">{{ formState.teamSize }}</b>{{ t('control.summary.orgMid') }}<b class="em">{{ formState.shareholder }}</b>{{ t('control.summary.orgPost') }}
         </div>
       </div>
       <div class="sum-right">
         <div class="sum-budget">
-          <div class="sum-budget-label">实时申报首季现金储备需求</div>
+          <div class="sum-budget-label">{{ t('control.summary.cashLabel') }}</div>
           <div class="sum-budget-val">{{ fmt(totalBudget) }}</div>
         </div>
-        <button class="btn-export" @click="exportCSV">📄 导出报告</button>
+        <button class="btn-export" @click="exportCSV">{{ t('control.summary.exportBtn') }}</button>
       </div>
     </div>
 
     <!-- 图表 -->
     <div class="chart-section">
       <div class="section-title">
-        <h3>预算流数据智能看板</h3>
-        <p>多维度解构预算重心，实时透视与标准模型的偏离度</p>
+        <h3>{{ t('control.charts.title') }}</h3>
+        <p>{{ t('control.charts.subtitle') }}</p>
       </div>
       <div class="chart-grid">
         <div class="card chart-card">
-          <h4 class="chart-h">🥧 6 大成本体系结构占比</h4>
+          <h4 class="chart-h">{{ t('control.charts.pie') }}</h4>
           <div class="chart-box"><canvas ref="pieEl" /></div>
         </div>
         <div class="card chart-card">
-          <h4 class="chart-h">🛰️ 行业对标偏差雷达 (RMB)</h4>
+          <h4 class="chart-h">{{ t('control.charts.radar') }}</h4>
           <div class="chart-box"><canvas ref="radarEl" /></div>
         </div>
         <div class="card chart-card">
-          <h4 class="chart-h">📊 成本 Top 驱动项 (RMB)</h4>
+          <h4 class="chart-h">{{ t('control.charts.bar') }}</h4>
           <div class="chart-box"><canvas ref="barEl" /></div>
         </div>
       </div>
@@ -583,8 +609,8 @@ function exportCSV() {
 
     <!-- 卡片明细 -->
     <div class="section-title">
-      <h3>决策级科目细分账单（随上方表单实时重算）</h3>
-      <p>点 🔓 即可进入沙盒自定义；更改省份或人数将自动基于矩阵权重全盘洗牌。</p>
+      <h3>{{ t('control.bill.title') }}</h3>
+      <p>{{ t('control.bill.subtitle') }}</p>
     </div>
 
     <div class="bill-grid">
@@ -592,9 +618,9 @@ function exportCSV() {
         <div class="bill-head">
           <div class="bill-cat">
             <span class="bill-ico" :style="{ background: categoriesMeta[cat].hex + '1a', color: categoriesMeta[cat].hex }">{{ categoriesMeta[cat].icon }}</span>
-            <span class="bill-name">{{ cat }}</span>
+            <span class="bill-name">{{ catLabel(cat) }}</span>
           </div>
-          <button class="bill-lock" :class="{ on: !cardLocked[cat] }" @click="toggleLock(cat)" :title="cardLocked[cat] ? '解锁编辑' : '锁定'">
+          <button class="bill-lock" :class="{ on: !cardLocked[cat] }" @click="toggleLock(cat)" :title="cardLocked[cat] ? t('control.bill.unlock') : t('control.bill.lock')">
             {{ cardLocked[cat] ? '🔒' : '🔓' }}
           </button>
         </div>
@@ -603,7 +629,7 @@ function exportCSV() {
           <template v-if="cardLocked[cat]">
             <div v-for="(node, i) in budgetData[cat]" :key="i" class="item-row">
               <span class="item-name">{{ node.name }}</span>
-              <span class="item-money">¥ {{ node.money.toLocaleString() }}</span>
+              <span class="item-money">¥ {{ node.money.toLocaleString(localeTag) }}</span>
             </div>
           </template>
           <template v-else>
@@ -613,14 +639,14 @@ function exportCSV() {
                 <span>¥</span>
                 <input type="number" :value="node.money" @input="updateMoney(cat, i, ($event.target as HTMLInputElement).value)" />
               </div>
-              <button class="del-btn" @click="deleteItem(cat, i)" title="删除">🗑</button>
+              <button class="del-btn" @click="deleteItem(cat, i)" :title="t('control.bill.delete')">🗑</button>
             </div>
-            <button class="add-btn" @click="addItem(cat)">+ 添加细分预算科目</button>
+            <button class="add-btn" @click="addItem(cat)">{{ t('control.bill.addItem') }}</button>
           </template>
         </div>
 
         <div class="bill-foot">
-          小计：<b>¥ {{ categorySubtotal(cat).toLocaleString() }}</b>
+          {{ t('control.bill.subtotal') }}<b>¥ {{ categorySubtotal(cat).toLocaleString(localeTag) }}</b>
         </div>
       </div>
     </div>
@@ -628,13 +654,13 @@ function exportCSV() {
     <div class="cfo-tip">
       <span class="cfo-ico">📊</span>
       <span>
-        以上成本为基于行业矩阵的<strong>模拟推演</strong>，实际支出因城市、供应商及谈判能力差异较大，建议逐项询价后修正。
+        {{ t('control.cfoPre') }}<strong>{{ t('control.cfoEmph') }}</strong>{{ t('control.cfoPost') }}
       </span>
     </div>
 
     <div class="ai-disclaimer">
       <span class="ai-disclaimer-icon">⚠️</span>
-      <p><b>AI生成风险提示</b>：内容基于现行法律法规，具体操作请结合当地市场监管部门、银行及税务机关的最新要求执行，建议在重大决策前咨询专业律师或行业顾问。</p>
+      <p><b>{{ t('common.aiRiskTitle') }}</b>{{ t('common.aiRiskSep') }}{{ t('common.aiRiskDesc') }}</p>
     </div>
   </div>
 </template>

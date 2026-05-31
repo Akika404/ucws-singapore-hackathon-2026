@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { StepData, BaseFormData } from './RegAdvisor.vue'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   steps: StepData[]
@@ -12,42 +15,30 @@ const emit = defineEmits<{ restart: [] }>()
 // 公司人数为 1 人时展示 image_2，否则展示 image_1
 const orgImage = computed(() => (props.formData.people === 1 ? '/image_2.png' : '/image_1.png'))
 
-const STEP_LABELS: Record<string, string> = {
-  name: '公司名称',
-  type: '公司类型',
-  scope: '经营范围',
-  capital: '注册资本',
-  address: '注册地址',
-  org: '组织架构',
-}
-
 function getStepValue(stepId: string): string {
   const key = stepId === 'type' ? 'companyType' : stepId
   const v = (props.formData as any)[key]
   if (v == null || v === '') return '—'
   if (stepId === 'scope' && typeof v === 'object') {
-    const others = Array.isArray(v.others) ? v.others.join('、') : ''
-    return others ? `主：${v.main}；其他：${others}` : `主：${v.main}`
+    const others = Array.isArray(v.others) ? v.others.join(t('summary.othersSep')) : ''
+    return others
+      ? t('summary.scopeWithOthers', { main: v.main, others })
+      : t('summary.scopeMain', { main: v.main })
   }
   return String(v)
 }
 
 const NON_ORG_STEPS = ['name', 'type', 'scope', 'capital', 'address']
 
-const FULL_FLOW: { id: string; title: string; icon: string; desc: string }[] = [
-  { id: 'name',    title: '公司名称核准', icon: '🔍', desc: '确定公司字号并通过名称核准' },
-  { id: 'scope',   title: '经营范围拟定', icon: '📋', desc: '确定主营业务及其他经营范围' },
-  { id: 'type',    title: '公司类型选择', icon: '🏢', desc: '根据股东与规模选择公司组织形式' },
-  { id: 'capital', title: '注册资本认缴', icon: '💰', desc: '确定认缴金额并写入公司章程' },
-  { id: 'address', title: '注册地址选择', icon: '📍', desc: '选择并确认合规的注册地址' },
-  { id: 'org',     title: '组织架构设计', icon: '🏗️', desc: '设置法定代表人、董事、监事等岗位' },
-  { id: 'license', title: '领取营业执照', icon: '📄', desc: '提交工商登记申请并领取营业执照' },
-  { id: 'seal',    title: '刻章与备案',   icon: '🔏', desc: '刻制公章、财务章、法人章等并到公安备案' },
-  { id: 'bank',    title: '银行开户',     icon: '🏦', desc: '开立公司基本存款账户用于日常资金往来' },
-  { id: 'tax',     title: '税务登记',     icon: '🧾', desc: '完成税种核定并办理税务报到' },
-  { id: 'social',  title: '社保开户',     icon: '🛡️', desc: '开通社保账户并为员工办理参保登记' },
-  { id: 'operate', title: '公司营业',     icon: '🚀', desc: '完成全部登记，公司正式开业经营' },
-]
+// 完整流程 12 步：id/icon 稳定，title/desc 随语言切换
+const FULL_FLOW = computed(() =>
+  [
+    { id: 'name', icon: '🔍' }, { id: 'scope', icon: '📋' }, { id: 'type', icon: '🏢' },
+    { id: 'capital', icon: '💰' }, { id: 'address', icon: '📍' }, { id: 'org', icon: '🏗️' },
+    { id: 'license', icon: '📄' }, { id: 'seal', icon: '🔏' }, { id: 'bank', icon: '🏦' },
+    { id: 'tax', icon: '🧾' }, { id: 'social', icon: '🛡️' }, { id: 'operate', icon: '🚀' },
+  ].map(s => ({ ...s, title: t(`summary.flow.${s.id}.title`), desc: t(`summary.flow.${s.id}.desc`) })),
+)
 
 function exportPdf() {
   window.print()
@@ -59,22 +50,22 @@ function exportPdf() {
     <!-- Header -->
     <div class="header-card">
       <div class="header-left">
-        <div class="header-badge">✦ 方案已生成</div>
-        <h1 class="header-title">您的工商注册方案</h1>
-        <p class="header-sub">根据您的选择定制生成，可导出为 PDF 存档备用</p>
+        <div class="header-badge">{{ t('summary.badge') }}</div>
+        <h1 class="header-title">{{ t('summary.title') }}</h1>
+        <p class="header-sub">{{ t('summary.subtitle') }}</p>
       </div>
       <div class="header-actions">
-        <button class="btn-ghost no-print" @click="emit('restart')">重新配置</button>
+        <button class="btn-ghost no-print" @click="emit('restart')">{{ t('summary.reconfigure') }}</button>
         <button class="btn-export no-print" @click="exportPdf">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          导出 PDF
+          {{ t('summary.exportPdf') }}
         </button>
       </div>
     </div>
 
     <!-- Full registration flow -->
     <div class="flow-panel">
-      <div class="panel-title">完整注册流程</div>
+      <div class="panel-title">{{ t('summary.fullFlowTitle') }}</div>
       <div class="flow-list">
         <div
           v-for="(step, i) in FULL_FLOW"
@@ -96,7 +87,7 @@ function exportPdf() {
     <div class="main-layout">
       <!-- step results -->
       <div class="info-panel">
-        <div class="panel-title">注册方案详情</div>
+        <div class="panel-title">{{ t('summary.detailTitle') }}</div>
         <div
           v-for="step in steps.filter(s => NON_ORG_STEPS.includes(s.id))"
           :key="step.id"
@@ -104,7 +95,7 @@ function exportPdf() {
         >
           <div class="row-meta">
             <span class="row-icon">{{ step.icon }}</span>
-            <span class="row-label">{{ STEP_LABELS[step.id] ?? step.title }}</span>
+            <span class="row-label">{{ t(`summary.labels.${step.id}`) }}</span>
           </div>
           <div class="row-value">{{ getStepValue(step.id) }}</div>
         </div>
@@ -112,9 +103,9 @@ function exportPdf() {
 
       <!-- org chart -->
       <div class="org-panel">
-        <div class="panel-title">组织架构设计</div>
+        <div class="panel-title">{{ t('summary.orgTitle') }}</div>
         <div class="org-img-wrap">
-          <img :src="orgImage" alt="组织架构图" class="org-img" />
+          <img :src="orgImage" :alt="t('summary.orgAlt')" class="org-img" />
         </div>
       </div>
     </div>
@@ -122,7 +113,7 @@ function exportPdf() {
     <!-- Footer -->
     <div class="footer-note">
       <span class="note-dot">💡</span>
-      以上方案仅供参考，具体注册流程请以当地工商局要求为准。建议在正式提交前咨询专业顾问。
+      {{ t('summary.footer') }}
     </div>
   </div>
 </template>
