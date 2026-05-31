@@ -173,5 +173,5 @@ nav { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
   border-radius: 16px;
   box-shadow: var(--shadow);
 }
-.content-area { flex: 1; overflow-y: auto; padding: 24px; }
+.content-area { flex: 1; overflow-y: auto; padding: 24px 0; }
 </style>
