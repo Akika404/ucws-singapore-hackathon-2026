@@ -1,0 +1,41 @@
+export default {
+  badge: '✦ Plan generated',
+  title: 'Your company registration plan',
+  subtitle: 'Tailored to your choices, exportable as PDF for your records',
+  reconfigure: 'Reconfigure',
+  exportPdf: 'Export PDF',
+  fullFlowTitle: 'Full registration workflow',
+  detailTitle: 'Registration plan details',
+  orgTitle: 'Org structure design',
+  orgAlt: 'Org structure diagram',
+  footer:
+    'The above plan is for reference only. Follow your local market regulator\'s requirements for the actual procedure. Consult a professional advisor before formal submission.',
+  step: 'STEP',
+  // 详情面板字段标签（与 step id 对应）
+  labels: {
+    name: 'Company name',
+    type: 'Company type',
+    scope: 'Business scope',
+    capital: 'Registered capital',
+    address: 'Registered address',
+    org: 'Org structure',
+  },
+  scopeMain: 'Main: {main}',
+  scopeWithOthers: 'Main: {main}; Others: {others}',
+  othersSep: ', ',
+  // 完整流程 12 步（标题 + 描述）
+  flow: {
+    name: { title: 'Name Approval', desc: 'Determine the company name and pass name approval' },
+    scope: { title: 'Business Scope', desc: 'Determine main business and other business scope' },
+    type: { title: 'Company Type', desc: 'Choose the legal form based on shareholders and scale' },
+    capital: { title: 'Registered Capital', desc: 'Set subscribed amount and write into the articles' },
+    address: { title: 'Registered Address', desc: 'Select and confirm a compliant registered address' },
+    org: { title: 'Org Structure', desc: 'Set legal representative, directors, supervisors, etc.' },
+    license: { title: 'Business License', desc: 'Submit registration application and obtain the license' },
+    seal: { title: 'Seal & Filing', desc: 'Engrave company seals and file with the police' },
+    bank: { title: 'Bank Account', desc: 'Open a basic deposit account for daily transactions' },
+    tax: { title: 'Tax Registration', desc: 'Complete tax assessment and tax check-in' },
+    social: { title: 'Social Security', desc: 'Open a social security account and enroll employees' },
+    operate: { title: 'Open for Business', desc: 'All registrations done, the company officially opens' },
+  },
+}
