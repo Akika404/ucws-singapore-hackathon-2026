@@ -1,7 +1,7 @@
 from token import OP
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
+from typing import Any, Dict, List, Optional, Literal, Union
 from enum import Enum
 
 # ============== 第一页：generate-names ==============
@@ -151,3 +151,157 @@ class OrgTipsRequest(BaseModel):
 class OrgTipsResponse(BaseModel):
     """响应：组织架构小tips"""
     tips: str = Field(..., description="组织架构建议")
+
+
+# ============== 开业成本预估 ==============
+class FormDataOnlyRequest(BaseModel):
+    """通用请求：只包含完整 formData"""
+    formData: Dict[str, Any] = Field(..., description="完整表单数据")
+
+
+class OpeningCostCompanyProfile(BaseModel):
+    previewName: str = Field("", description="拟展示公司名称")
+    companyType: str = Field("", description="公司类型")
+    province: str = Field("", description="注册地")
+    industry: str = Field("", description="行业")
+    teamSize: int = Field(0, description="团队规模")
+    shareholder: int = Field(0, description="股东人数")
+    capitalWan: float = Field(0, description="注册资本，单位万元")
+    scopeMain: str = Field("", description="主营范围")
+    scopeOthers: List[str] = Field(default_factory=list, description="其他经营范围")
+
+
+class OpeningCostSummary(BaseModel):
+    currency: str = Field("CNY", description="币种")
+    period: str = Field("", description="预算周期")
+    totalBudget: float = Field(0, description="总预算，单位元")
+    cashReserveLabel: str = Field("", description="现金储备标签")
+    conclusion: str = Field("", description="AI 总评")
+
+
+class OpeningCostItem(BaseModel):
+    id: str = Field("", description="成本科目 id")
+    name: str = Field("", description="成本科目名称")
+    amount: float = Field(0, description="预估金额，单位元")
+    tier: str = Field("", description="权重档位")
+    reason: str = Field("", description="金额依据")
+
+
+class OpeningCostCategory(BaseModel):
+    id: str = Field("", description="成本体系 id")
+    name: str = Field("", description="成本体系名称")
+    shortName: str = Field("", description="短名称")
+    icon: str = Field("", description="图标")
+    color: str = Field("", description="颜色")
+    subtotal: float = Field(0, description="当前体系小计，单位元")
+    benchmark: float = Field(0, description="行业基准小计，单位元")
+    items: List[OpeningCostItem] = Field(default_factory=list, description="成本科目")
+
+
+class PiePoint(BaseModel):
+    categoryId: str = Field("", description="成本体系 id")
+    name: str = Field("", description="名称")
+    value: float = Field(0, description="金额")
+    color: str = Field("", description="颜色")
+
+
+class RadarData(BaseModel):
+    labels: List[str] = Field(default_factory=list, description="标签")
+    current: List[float] = Field(default_factory=list, description="当前方案")
+    benchmark: List[float] = Field(default_factory=list, description="行业基准")
+
+
+class TopDriver(BaseModel):
+    name: str = Field("", description="驱动项名称")
+    amount: float = Field(0, description="金额")
+
+
+class OpeningCostCharts(BaseModel):
+    pie: List[PiePoint] = Field(default_factory=list, description="甜甜圈图数据")
+    radar: RadarData = Field(default_factory=RadarData, description="雷达图数据")
+    topDrivers: List[TopDriver] = Field(default_factory=list, description="成本 Top 驱动项")
+
+
+class OpeningCostResponse(BaseModel):
+    companyProfile: OpeningCostCompanyProfile = Field(default_factory=OpeningCostCompanyProfile)
+    summary: OpeningCostSummary = Field(default_factory=OpeningCostSummary)
+    categories: List[OpeningCostCategory] = Field(default_factory=list)
+    charts: OpeningCostCharts = Field(default_factory=OpeningCostCharts)
+    tips: List[str] = Field(default_factory=list)
+
+
+# ============== 扶持政策检索 ==============
+class SupportPolicyCompanyProfile(BaseModel):
+    previewName: str = Field("", description="拟展示公司名称")
+    province: str = Field("", description="注册地")
+    industry: str = Field("", description="行业")
+    teamSize: int = Field(0, description="团队规模")
+    capitalWan: float = Field(0, description="注册资本，单位万元")
+
+
+class SupportPolicySummary(BaseModel):
+    matchedCount: int = Field(0, description="匹配政策数量")
+    maxBenefit: float = Field(0, description="可量化红利合计，单位元")
+    currency: str = Field("CNY", description="币种")
+    conclusion: str = Field("", description="AI 总评")
+
+
+class SupportPolicyCategory(BaseModel):
+    id: str = Field("", description="政策类别 id")
+    name: str = Field("", description="政策类别名称")
+    count: int = Field(0, description="命中数量")
+    color: str = Field("", description="颜色")
+
+
+class SupportPolicyBenefit(BaseModel):
+    displayPrefix: str = Field("", description="展示前缀")
+    displayValue: str = Field("", description="展示值")
+    amount: float = Field(0, description="可量化金额，单位元")
+    unit: str = Field("", description="单位")
+
+
+class SupportPolicyRequirements(BaseModel):
+    province: Union[str, List[str]] = Field("all", description="地区要求")
+    minTeamSize: int = Field(0, description="最低人数")
+    minCapitalWan: float = Field(0, description="最低注册资本，单位万元")
+    industries: Union[str, List[str]] = Field("all", description="行业要求")
+
+
+class SupportPolicyAction(BaseModel):
+    label: str = Field("", description="按钮文案")
+    url: str = Field("", description="官方政策申报入口链接，优先返回当地政务服务网或主管部门办事页")
+
+
+class SupportPolicyItem(BaseModel):
+    id: str = Field("", description="政策 id")
+    category: str = Field("", description="政策类别")
+    categoryName: str = Field("", description="政策类别名称")
+    title: str = Field("", description="政策标题")
+    description: str = Field("", description="政策描述")
+    department: str = Field("", description="主管部门")
+    priority: str = Field("", description="优先级")
+    priorityLabel: str = Field("", description="优先级展示文案")
+    benefit: SupportPolicyBenefit = Field(default_factory=SupportPolicyBenefit)
+    probability: int = Field(0, description="通过率，0-100")
+    deadlineDays: int = Field(0, description="距截止天数")
+    cycle: str = Field("", description="办理周期")
+    reasons: List[str] = Field(default_factory=list, description="匹配理由")
+    requirements: SupportPolicyRequirements = Field(default_factory=SupportPolicyRequirements)
+    materials: List[str] = Field(default_factory=list, description="建议材料")
+    applyAction: SupportPolicyAction = Field(default_factory=SupportPolicyAction)
+
+
+class SupportPolicyFilters(BaseModel):
+    categoryOptions: List[str] = Field(default_factory=list)
+    priorityOptions: List[str] = Field(default_factory=list)
+    sortOptions: List[str] = Field(default_factory=list)
+    defaultSort: str = Field("priority")
+
+
+class SupportPoliciesResponse(BaseModel):
+    companyProfile: SupportPolicyCompanyProfile = Field(default_factory=SupportPolicyCompanyProfile)
+    summary: SupportPolicySummary = Field(default_factory=SupportPolicySummary)
+    categories: List[SupportPolicyCategory] = Field(default_factory=list)
+    policies: List[SupportPolicyItem] = Field(default_factory=list)
+    filters: SupportPolicyFilters = Field(default_factory=SupportPolicyFilters)
+    tips: List[str] = Field(default_factory=list)

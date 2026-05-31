@@ -23,6 +23,9 @@ from schemas import (
     AddressResponse,
     OrgTipsRequest,
     OrgTipsResponse,
+    FormDataOnlyRequest,
+    OpeningCostResponse,
+    SupportPoliciesResponse,
 )
 
 from services import BusinessService
@@ -237,5 +240,37 @@ async def page7_org_tips(request: OrgTipsRequest, x_lang: str = Header("en", ali
             return result["data"]
         else:
             raise HTTPException(status_code=500, detail=f"处理失败: {result['message']}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+
+
+@router.post("/opening-cost-estimate", response_model=OpeningCostResponse)
+async def opening_cost_estimate(request: FormDataOnlyRequest, x_lang: str = Header("en", alias="X-Lang")):
+    """
+    开业成本预估
+    - 输入：完整 formData
+    - 输出：AI 生成的首季开业成本、六大成本体系、图表数据与提示
+    """
+    try:
+        result = await BusinessService.process_opening_cost_estimate(request, x_lang)
+        if result["status"] == "success":
+            return result["data"]
+        raise HTTPException(status_code=500, detail=f"处理失败: {result['message']}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+
+
+@router.post("/support-policies/search", response_model=SupportPoliciesResponse)
+async def support_policies_search(request: FormDataOnlyRequest, x_lang: str = Header("en", alias="X-Lang")):
+    """
+    扶持政策检索
+    - 输入：完整 formData
+    - 输出：AI 生成的政策匹配结果、红利预估、申报优先级与材料建议
+    """
+    try:
+        result = await BusinessService.process_support_policies_search(request, x_lang)
+        if result["status"] == "success":
+            return result["data"]
+        raise HTTPException(status_code=500, detail=f"处理失败: {result['message']}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
