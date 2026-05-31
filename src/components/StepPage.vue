@@ -161,7 +161,7 @@ function formatMoneyWan(amount: number) {
 }
 
 function formatCapitalAnswer(estimate: CapitalEstimate) {
-  return `认缴金额：${formatMoneyWan(estimate.intention)}；预估金额：${formatMoneyWan(estimate.estimatedAmount)}`
+  return `意向投资金额：${formatMoneyWan(estimate.intention)}；预估注册资本/认缴金额：${formatMoneyWan(estimate.estimatedAmount)}`
 }
 
 async function loadCapitalEstimate(amount: number) {
@@ -662,7 +662,7 @@ function goForward() {
 
       <div v-else-if="step.id === 'capital'" class="capital-step">
         <div class="field-group">
-          <label class="field-label">注册资本意向（认缴金额）</label>
+          <label class="field-label">意向投资金额</label>
           <div class="capital-input-row pretty-control">
             <input
               v-model.number="capitalIntention"
@@ -678,7 +678,7 @@ function goForward() {
         <div class="capital-tip">新公司法要求五年内完成实缴。</div>
 
         <div class="capital-estimate">
-          <span class="capital-estimate-label">预估金额</span>
+          <span class="capital-estimate-label">预估注册资本/认缴金额</span>
           <span v-if="capitalLoading" class="capital-estimate-value muted">
             <span class="spinner"></span>
             正在预估...

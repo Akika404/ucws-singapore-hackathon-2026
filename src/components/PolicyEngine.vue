@@ -484,6 +484,11 @@ function deadlineColor(days: number): string {
         </div>
       </div>
     </div>
+
+    <div class="ai-disclaimer">
+      <span class="ai-disclaimer-icon">⚠️</span>
+      <p><b>AI生成风险提示</b>：内容基于现行法律法规，具体操作请结合当地市场监管部门、银行及税务机关的最新要求执行，建议在重大决策前咨询专业律师或行业顾问。</p>
+    </div>
   </div>
 </template>
 

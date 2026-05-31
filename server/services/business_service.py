@@ -274,7 +274,7 @@ class BusinessService:
         Please parse the "estimatedAmount" and "explanation" and output them in JSON format.
         EXAMPLE JSON OUTPUT:
         {
-            "estimatedAmount": 金额(万元),
+            "estimatedAmount": 预估金额(万元),
             "explanation": "100字以内的建议与解释"
         }
         """
@@ -305,7 +305,7 @@ class BusinessService:
            · 提醒用户：注册资本为认缴制，不要求立即实缴，但需在章程中明确期限内缴足（5年）。
            · 建议数字不宜超过用户未来3~5年可承受的实缴能力。
         -----
-        注册资本意向（认缴金额）：{request.capitalIntention}（万元）
+        用户投入资本意向（认缴金额）：{request.capitalIntention}（万元）// 此项并非为最终的注册资本，而是用户的资金投入预期，建议注册资本需结合此预期进行合理规划。
         主营业务类型：{request.formData.business}
         人数：{request.formData.people}
         股东数量：{request.formData.shareholder}

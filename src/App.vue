@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import LandingPage from './components/LandingPage.vue'
 import RegAdvisor from './components/RegAdvisor.vue'
 import FinanceSandbox from './components/FinanceSandbox.vue'
 import LegalAssistant from './components/LegalAssistant.vue'
@@ -9,25 +8,16 @@ import PolicyEngine from './components/PolicyEngine.vue'
 
 type ModuleId = 'reg' | 'finance' | 'control' | 'legal' | 'policy'
 const currentModule = ref<ModuleId>('reg')
-const showLanding = ref(true)
 const modules: { id: ModuleId; label: string; icon: string }[] = [
   { id: 'reg', label: '智能工商注册顾问', icon: '📋' },
   { id: 'control', label: '开业成本预估', icon: '📊' },
   { id: 'policy', label: '扶持政策检索', icon: '🎯' },
   { id: 'legal', label: '法务合规与合同助手', icon: '⚖️' },
 ]
-
-function enterApp() {
-  currentModule.value = 'reg'
-  showLanding.value = false
-}
 </script>
 
 <template>
-  <LandingPage v-if="showLanding" @start="enterApp" />
-
-  <template v-else>
-    <aside class="sidebar">
+  <aside class="sidebar">
     <div class="logo">
       <span class="logo-icon">⚡</span>
       <span>Lucky OS</span>
@@ -58,7 +48,6 @@ function enterApp() {
       <LegalAssistant v-else />
     </main>
   </div>
-  </template>
 </template>
 
 <style scoped>

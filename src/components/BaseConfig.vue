@@ -12,8 +12,14 @@ function submit() {
   emit('generate', {
     business: business.value,
     people: people.value,
+    shareholder: null,
     companyType: people.value < 50 ? '有限责任公司' : '股份有限公司',
     namePref: namePref.value,
+    name: '',
+    scope: '',
+    capital: '',
+    address: '',
+    org: '',
   })
 }
 

@@ -205,6 +205,11 @@ onMounted(loadDocuments)
             </button>
           </div>
         </div>
+
+        <div class="ai-disclaimer compact">
+          <span class="ai-disclaimer-icon">⚠️</span>
+          <p><b>AI生成风险提示</b>：文书模板仅供参考，正式使用前请咨询专业律师审核。</p>
+        </div>
       </div>
 
       <!-- 右侧边栏 -->
@@ -407,4 +412,6 @@ onMounted(loadDocuments)
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(8px); }
 
 @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+.ai-disclaimer.compact { margin-top: 8px; }
 </style>

@@ -414,21 +414,43 @@ function exportPdf() {
 /* ── Print ── */
 @media print {
   .no-print { display: none !important; }
+  .summary-wrap { max-width: 100% !important; }
   .header-card {
     background: #1677ff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   .info-panel, .org-panel, .flow-panel { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
-  /* Flow grid: 6 cols overflows portrait page — drop to 3 and drop connector arrows */
-  .flow-list {
-    grid-template-columns: repeat(3, 1fr);
-    column-gap: 12px;
-    row-gap: 14px;
-    padding: 20px 18px 24px;
-  }
   .flow-card { break-inside: avoid; }
-  .flow-card::after { display: none !important; }
+  /* Print: 6-column grid on A4 portrait */
+  .flow-list {
+    grid-template-columns: repeat(6, 1fr);
+    column-gap: 6px;
+    row-gap: 10px;
+    padding: 14px 10px 18px;
+  }
+  .flow-card {
+    padding: 8px 4px 6px;
+    border-radius: 8px;
+  }
+  .flow-card::after {
+    width: 5px;
+    height: 5px;
+    margin-left: 1px;
+    border-width: 1.5px;
+  }
+  .flow-card:nth-child(6n)::after { display: none; }
+  .flow-num {
+    height: 16px;
+    padding: 0 6px;
+    font-size: 9px;
+    margin-bottom: 6px;
+  }
+  .flow-num::before { font-size: 7.5px; }
+  .flow-icon { font-size: 14px; }
+  .flow-head { gap: 3px; margin-bottom: 4px; }
+  .flow-title { font-size: 9.5px; }
+  .flow-desc { font-size: 8px; line-height: 1.35; }
   /* Keep enlarged org image within a single page */
   .org-img { max-width: 100%; max-height: 360px; }
 }

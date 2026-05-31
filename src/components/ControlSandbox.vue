@@ -628,9 +628,13 @@ function exportCSV() {
     <div class="cfo-tip">
       <span class="cfo-ico">📊</span>
       <span>
-        <b>Lucky OS 核心成本预估就绪：</b>
-        预算矩阵与全盘图表联动工作正常。如果已在下方卡片中调整完个性化数据，可点击右上方 <b>导出报告</b> 一键获取完整资产底表。
+        以上成本为基于行业矩阵的<strong>模拟推演</strong>，实际支出因城市、供应商及谈判能力差异较大，建议逐项询价后修正。
       </span>
+    </div>
+
+    <div class="ai-disclaimer">
+      <span class="ai-disclaimer-icon">⚠️</span>
+      <p><b>AI生成风险提示</b>：内容基于现行法律法规，具体操作请结合当地市场监管部门、银行及税务机关的最新要求执行，建议在重大决策前咨询专业律师或行业顾问。</p>
     </div>
   </div>
 </template>
@@ -824,7 +828,7 @@ function exportCSV() {
 
 /* cfo */
 .cfo-tip {
-  background: #f6ffed; border: 1px solid #b7eb8f; color: #135200;
+  background: #f6ffed; border: 1px solid #eade70; color: #135200;
   padding: 14px 18px; border-radius: var(--radius);
   font-size: 13px; line-height: 1.7; display: flex; gap: 10px; align-items: flex-start;
 }
