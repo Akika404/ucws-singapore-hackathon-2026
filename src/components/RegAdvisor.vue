@@ -5,7 +5,7 @@ import StepPage from './StepPage.vue'
 import SummaryPage from './SummaryPage.vue'
 import { sharedFormData } from '../store'
 
-const { t, tm } = useI18n()
+const { t, tm, locale } = useI18n()
 
 export interface StepData {
   id: string
@@ -135,7 +135,7 @@ function dotStyle(i: number) {
         <p class="subtitle">{{ t('reg.welcome.subtitle') }}</p>
       </header>
 
-      <section class="flow">
+      <section class="flow" :class="{ 'flow-compact': locale === 'en' }">
         <div class="flow-line"></div>
         <div
           v-for="(label, i) in WELCOME_STEPS"
@@ -354,6 +354,18 @@ function dotStyle(i: number) {
   line-height: 1.4;
   white-space: nowrap;
 }
+.flow-compact .node {
+  padding: 0 4px;
+  gap: 10px;
+}
+.flow-compact .node-dot {
+  width: 50px;
+  height: 50px;
+  font-size: 19px;
+}
+.flow-compact .node-label {
+  font-size: 12px;
+}
 .cta {
   display: inline-flex;
   align-items: center;
@@ -404,7 +416,7 @@ function dotStyle(i: number) {
 
 /* ---------- Advisor ---------- */
 .advisor-wrapper { display: flex; flex-direction: column; gap: 20px; width: 100%; }
-.ai-disclaimer { margin-left: 216px; }
+.ai-disclaimer { margin-left: calc(196px + 20px); }
 .advisor-layout {
   display: flex;
   gap: 20px;
@@ -424,16 +436,17 @@ function dotStyle(i: number) {
   width: 196px;
   position: fixed;
   top: 80px;
-  left: 244px;
-  height: calc(100vh - 104px);
+  bottom: 12px;
+  left: calc(var(--sidebar-w) + 24px);
   overflow: hidden;
 }
 .progress-sidebar-inner {
   padding: 32px 28px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 4px;
   height: 100%;
+  overflow-y: auto;
 }
 .advisor-content {
   flex: 1;
