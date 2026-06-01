@@ -6,6 +6,19 @@ Lucky OS is a bilingual (English / 中文) Vue 3 + FastAPI application that turn
 
 ---
 
+## What is lucky OS？
+
+Lucky OS is a one-stop startup Copilot application powered by AI Agents, comprehensively covering the full spectrum of business needs throughout the entire pre-establishment lifecycle. Through AI-driven automation, it significantly lowers the barriers for OPC (One-Person Company) and micro/small business entrepreneurs in areas such as information gathering, financial estimation, and business registration and legal formalities. By digitizing and automating frequent, complex scenarios, it eliminates the substantial time and financial costs associated with offline consulting and manual document preparation.
+
+The product incorporates four core functional modules, each fulfilling its dedicated role to form a complete startup loop:
+
+1. Business Registration Advisor: Collects essential information such as the user’s business type and intended registration location, and automatically generates a full-suite business registration plan, including step-by-step procedures and personalized recommendations.
+2. Startup Cost Estimator: A finance-specific AI Agent automatically breaks down the full scope of startup expenditures across all dimensions, quantifying detailed cost items like equipment, rent, labor, and permits, and delivers a scientific startup capital allocation plan.
+3. Incentive Policy Finder: A regional policy search Agent precisely matches the latest support documents—such as subsidies, tax incentives, and startup loans—based on the company’s registered location. It intelligently filters policies most relevant to the entrepreneur and maps out the application pathways.
+4. Legal Compliance & Contract Assistant: Features a built-in, cross-industry commercial contract template library covering common business scenarios. The AI outputs actionable compliance guidance for commercial operations and labor and employment matters.
+
+With its lightweight interaction design and autonomous AI computation as core strengths, Lucky OS offers aspiring entrepreneurs an end-to-end, low-cost digital startup solution.
+
 ## Why an Agent?
 
 Company registration is not a fixed checklist — every decision depends on the ones before it. The kind of business you describe affects whether you need pre-approval, which shapes your recommended company type, which influences registered capital, address, org structure, opening cost, and which subsidies you qualify for.
