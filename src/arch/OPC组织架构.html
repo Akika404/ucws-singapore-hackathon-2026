@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>治理架构 · 股东+董事 | 一人公司权责整合</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f2f5;
+            font-family: 'Segoe UI', 'Roboto', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 单一卡片容器 — 居中且宽度优雅 */
+        .single-card-container {
+            max-width: 720px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* 通用卡片样式 — 完全继承之前的设计语言 */
+        .card {
+            background: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        /* 卡片头部 */
+        .card-header {
+            padding: 1.5rem 1.5rem 0.75rem 1.5rem;
+            border-bottom: 2px solid #eef2f6;
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .card-title span {
+            background: #eef2ff;
+            padding: 0.2rem 0.7rem;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #1e3a8a;
+        }
+
+        .sub-role {
+            font-size: 0.85rem;
+            color: #5b6e8c;
+            background: #f8fafc;
+            display: inline-block;
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
+
+        /* 内容区域 */
+        .card-content {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        /* 双栏职责区域（董事职责 / 股东职责） */
+        .dual-responsibilities {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.2rem;
+            margin: 0.2rem 0 0.2rem 0;
+        }
+
+        .resp-col {
+            flex: 1;
+            background: #ffffff;
+            border-radius: 1rem;
+            border: 1px solid #eef2f6;
+            padding: 0.8rem 1rem;
+            transition: all 0.1s ease;
+        }
+
+        .resp-col h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #1f3a5f;
+        }
+
+        .duties-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #4a5b7a;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .duties-label::before {
+            content: "▍";
+            font-size: 1rem;
+            font-weight: normal;
+        }
+
+        .duties-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.2rem;
+        }
+        .duty-tag {
+            background: #f1f5f9;
+            padding: 0.3rem 0.9rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #1f3a5f;
+            transition: all 0.1s ease;
+        }
+        .duty-tag:hover {
+            background: #e2e8f0;
+            transform: scale(1.02);
+        }
+
+        /* 特色提示区块 — 一人有限公司无需监事 */
+        .legal-note {
+            background: #eef2ff;
+            border-left: 4px solid #1e4a76;
+            border-radius: 0.75rem;
+            padding: 0.85rem 1rem;
+            font-size: 0.85rem;
+            color: #0c2b4b;
+            font-weight: 500;
+            line-height: 1.45;
+            margin-top: 0.2rem;
+        }
+        .legal-note p {
+            margin: 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .legal-note .icon {
+            font-size: 1.1rem;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #8a99b0;
+            margin-top: 2.5rem;
+            max-width: 720px;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            padding-top: 1rem;
+        }
+
+        /* 响应式：小屏下双栏变为一列 */
+        @media (max-width: 560px) {
+            body {
+                padding: 1.5rem 1rem;
+            }
+            .dual-responsibilities {
+                flex-direction: column;
+                gap: 0.9rem;
+            }
+            .card-title {
+                font-size: 1.5rem;
+            }
+            .card-content {
+                padding: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="single-card-container">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                🧑‍💼 股东 + 董事
+                <span>权责一体 · 不设监事</span>
+            </div>
+            <div class="sub-role">所有者决策 · 经营者执行 | 一人公司治理范式</div>
+        </div>
+        <div class="card-content">
+            <!-- 已删除“股东作为公司所有者享有最终控制权...”等描述段落 -->
+
+            <!-- 双栏核心职责：董事职责 + 股东职责 -->
+            <div class="dual-responsibilities">
+                <!-- 左侧：董事职责 -->
+                <div class="resp-col">
+                    <h4>📌 董事职责</h4>
+                    <div class="duties-list">
+                        <span class="duty-tag">战略决策</span>
+                        <span class="duty-tag">业务执行监督</span>
+                        <span class="duty-tag">高管聘任与解聘</span>
+                        <span class="duty-tag">风险内控</span>
+                        <span class="duty-tag">代表公司签署文件</span>
+                    </div>
+                </div>
+                <!-- 右侧：股东职责 -->
+                <div class="resp-col">
+                    <h4>💰 股东职责</h4>
+                    <div class="duties-list">
+                        <span class="duty-tag">资产收益</span>
+                        <span class="duty-tag">重大事项决议</span>
+                        <span class="duty-tag">选择与罢免董事</span>
+                        <span class="duty-tag">章程修订</span>
+                        <span class="duty-tag">增减资/合并/分立决策</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 一人有限公司无需设置监事的说明（已润色） -->
+            <div class="legal-note">
+                <p>
+                    <span class="icon">⚖️</span>
+                    <span>依据《公司法》一人有限责任公司特别规定，公司不设监事会或监事，由单一自然人同时履行股东、执行董事及经理职责，实现决策层与执行层高度统一，既保障治理效率又满足合规要求。</span>
+                </p>
+            </div>
+        </div>
+    </div>
+    <footer>
+        🧾 股东+董事架构 · 精简治理 权责闭环 | 适用于一人有限公司
+    </footer>
+</div>
+</body>
+</html>

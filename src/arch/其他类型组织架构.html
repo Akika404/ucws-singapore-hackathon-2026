@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>公司治理结构 | 股东会 · 董事会 · 监事会</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f2f5;
+            font-family: 'Segoe UI', 'Roboto', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 主容器：三列等宽网格布局 —— 顺序变为：股东会 | 董事会 | 监事会 */
+        .governance-grid {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.8rem;
+            align-items: stretch;
+        }
+
+        /* 通用卡片样式 — 保持所有模块视觉风格一致 */
+        .card {
+            background: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        /* 卡片头部装饰 + 标题区 */
+        .card-header {
+            padding: 1.5rem 1.5rem 0.75rem 1.5rem;
+            border-bottom: 2px solid #eef2f6;
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title span {
+            background: #eef2ff;
+            padding: 0.2rem 0.6rem;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #1e3a8a;
+        }
+
+        .sub-role {
+            font-size: 0.85rem;
+            color: #5b6e8c;
+            background: #f8fafc;
+            display: inline-block;
+            padding: 0.2rem 0.7rem;
+            border-radius: 20px;
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
+
+        /* 内容区域 */
+        .card-content {
+            padding: 1.2rem 1.5rem 1.5rem 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* 机构描述区块 */
+        .institution-desc {
+            background: #f9fafb;
+            padding: 0.9rem 1rem;
+            border-radius: 1rem;
+            font-size: 0.9rem;
+            color: #1e2a3e;
+            border-left: 4px solid;
+            line-height: 1.45;
+        }
+
+        /* 不同机构的左边框特色 (仅装饰) */
+        .shareholder-desc {
+            border-left-color: #2c6e9e;
+        }
+        .board-desc {
+            border-left-color: #2c7a4d;
+        }
+        .supervisor-desc {
+            border-left-color: #b45353;
+        }
+
+        /* 职责模块 */
+        .duties-section {
+            margin-top: 0.2rem;
+        }
+        .duties-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #4a5b7a;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .duties-label::before {
+            content: "▍";
+            font-size: 1rem;
+            font-weight: normal;
+        }
+        .duties-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .duty-tag {
+            background: #f1f5f9;
+            padding: 0.3rem 0.9rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #1f3a5f;
+            transition: all 0.1s ease;
+        }
+        .duty-tag:hover {
+            background: #e2e8f0;
+            transform: scale(1.02);
+        }
+
+        /* ---------- 股东会专属样式：去除下半部分白色空白（底部不留任何多余内边距/间隙） ---------- */
+        .card.shareholder-card {
+            padding-bottom: 0;
+        }
+        .card.shareholder-card .card-content {
+            padding-bottom: 0;
+        }
+        /* 确保股东会内容区域最后一个元素无下边距，彻底清除底部空白 */
+        .card.shareholder-card .card-content > :last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        /* 防止职责模块或描述区块产生额外留白 */
+        .card.shareholder-card .duties-section:last-child,
+        .card.shareholder-card .duties-list:last-child,
+        .card.shareholder-card .institution-desc:last-child {
+            margin-bottom: 0;
+        }
+        .card.shareholder-card::after {
+            display: none;
+        }
+
+        /* 董事会 / 监事会卡片保持原始完整内边距（完全不改动） */
+        .card:not(.shareholder-card) .card-content {
+            padding-bottom: 1.5rem;
+        }
+        .card:not(.shareholder-card) .card-content > :last-child {
+            margin-bottom: 0;
+        }
+
+        /* 通用辅助 */
+        .institution-desc p {
+            margin: 0;
+        }
+        .highlight-text {
+            font-weight: 600;
+            color: #0f2b3d;
+        }
+
+        /* 响应式：中等屏幕间距舒适 */
+        @media (max-width: 1000px) {
+            .governance-grid {
+                gap: 1.2rem;
+            }
+            .card-title {
+                font-size: 1.5rem;
+            }
+            .card-content {
+                padding: 1rem 1.2rem 1.2rem 1.2rem;
+            }
+            .card.shareholder-card .card-content {
+                padding-bottom: 0;
+            }
+            .card:not(.shareholder-card) .card-content {
+                padding-bottom: 1.2rem;
+            }
+        }
+
+        /* 移动端布局：垂直排列，顺序完全按照源码顺序（股东会 → 董事会 → 监事会） 
+           移除任何自动重排order，用户要求股东会放第一个，移动端同样保持股东会最先展示 */
+        @media (max-width: 780px) {
+            body {
+                padding: 1.5rem 1rem;
+            }
+            .governance-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 1.8rem;
+                max-width: 560px;
+            }
+            /* 确保三个卡片按DOM顺序纵向排列，不做任何order干预 */
+            .card {
+                width: 100%;
+                order: unset;
+            }
+        }
+
+        /* 卡片头部小图标装饰 */
+        .card-header .badge-icon {
+            font-size: 1.6rem;
+            margin-right: 0.25rem;
+            vertical-align: middle;
+        }
+
+        /* 页脚 */
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #8a99b0;
+            margin-top: 2.5rem;
+            max-width: 1400px;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            padding-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+<div style="width: 100%;">
+    <div class="governance-grid">
+        <!-- 1. 股东会模块 — 顺序第一位，去除下半部分白色空白，内容完全依据原始图示 -->
+        <div class="card shareholder-card">
+            <div class="card-header">
+                <div class="card-title">
+                    🏛️ 股东会
+                </div>
+                <div class="sub-role">最高权力机构</div>
+            </div>
+            <div class="card-content">
+                <div class="institution-desc shareholder-desc">
+                    <p>决定公司增减资、合并、分立、解散等重大事项，按出资比例行使表决权，拥有最终决策权。</p>
+                </div>
+                <div class="duties-section">
+                    <div class="duties-label">核心职责</div>
+                    <div class="duties-list">
+                        <span class="duty-tag">重大事项决议</span>
+                        <span class="duty-tag">章程修订</span>
+                    </div>
+                </div>
+                <!-- 股东会底部无额外留白：通过CSS彻底消除内边距与边距 -->
+            </div>
+        </div>
+
+        <!-- 2. 董事会 / 执行董事 模块 — 保持原样，经营决策机构信息完全不变 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    📋 董事会 / 执行董事
+                </div>
+                <div class="sub-role">经营决策机构</div>
+            </div>
+            <div class="card-content">
+                <div class="institution-desc board-desc">
+                    <p>执行股东会决议，负责公司日常经营决策与业务管理。<br>
+                    不设董事会时可设执行董事并兼任经理。</p>
+                </div>
+                <div class="duties-section">
+                    <div class="duties-label">核心职责</div>
+                    <div class="duties-list">
+                        <span class="duty-tag">战略制定</span>
+                        <span class="duty-tag">业务执行</span>
+                        <span class="duty-tag">重大经营决策</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 监事会/监事 模块 — 独立监督机构，全部信息与设计保持不变 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    🔍 监事会 / 监事
+                </div>
+                <div class="sub-role">独立监督机构</div>
+            </div>
+            <div class="card-content">
+                <div class="institution-desc supervisor-desc">
+                    <p>检查公司财务，监督董事及高级管理人员履职行为，维护公司合规与股东利益。<br>
+                    不得由董事、经理兼任。</p>
+                </div>
+                <div class="duties-section">
+                    <div class="duties-label">核心职责</div>
+                    <div class="duties-list">
+                        <span class="duty-tag">财务稽核</span>
+                        <span class="duty-tag">高管监督</span>
+                        <span class="duty-tag">合规保障</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer>
+        ⚖️ 公司治理架构 · 权责清晰 合规高效
+    </footer>
+</div>
+</body>
+</html>
