@@ -12,6 +12,7 @@ export default {
     generate: 'Generate name suggestions',
     regenerate: 'Regenerate',
     generating: 'Generating name suggestions...',
+    chooseHint: 'Please choose your intended company name',
     customName: 'Custom name',
     customNamePlaceholder: 'Enter the full company name you have chosen...',
     bizLabel: 'Main business',
@@ -30,6 +31,7 @@ export default {
     peopleLabel: 'Number of employees',
     peoplePlaceholder: 'Enter number of employees',
     shareholderLabel: 'Number of shareholders',
+    shareholderHint: 'If company headcount is greater than 1, the number of shareholders must be greater than 2.',
     shareholderPlaceholder: 'Enter number of shareholders',
     unit: 'persons',
     loading: 'Recommending a suitable company type for you...',
@@ -48,7 +50,7 @@ export default {
   // capital step
   capital: {
     intentionLabel: 'Intended investment amount',
-    intentionPlaceholder: 'Enter subscribed amount',
+    intentionPlaceholder: 'Enter investment amount',
     unit: '× 10k CNY',
     tip: 'The new Company Law requires full payment within five years.',
     estimateLabel: 'Estimated registered / subscribed capital',

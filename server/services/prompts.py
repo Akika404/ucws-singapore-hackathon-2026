@@ -930,9 +930,11 @@ def build_opening_cost_user(lang, request):
     payload = json.dumps(request.formData, ensure_ascii=False, indent=2)
     if lang == "zh":
         return (f"请根据以下完整 formData 生成开业成本预估页面的完整 JSON。\n"
+                f'**数据必须要根据用户的的真实工商信息进行计算，不能照搬样例数字；**\n'
                 f"要求：金额要基于企业画像动态变化，不要使用固定样例数字；如字段缺失，请合理推断并在 conclusion/tips 中体现不确定性。\n"
                 f"formData:\n{payload}\n")
     return (f"Generate the full JSON for the opening-cost estimate page from this formData.\n"
+            f"**Data must be calculated based on the user's actual business registration info, not copied from sample numbers;**\n"
             f"Requirements: amounts must change dynamically with the company profile, not copy sample numbers. If fields are missing, infer reasonably and mention uncertainty in conclusion/tips.\n"
             f"formData:\n{payload}\n")
 
@@ -941,9 +943,11 @@ def build_support_policies_user(lang, request):
     payload = json.dumps(request.formData, ensure_ascii=False, indent=2)
     if lang == "zh":
         return (f"请根据以下完整 formData 生成扶持政策检索页面的完整 JSON。\n"
+                    f'**数据必须要根据用户的的真实工商信息进行匹配，不能照搬样例政策；**\n'
                 f"要求：政策要围绕企业行业、注册地、人数、资本和经营范围动态匹配；避免编造具体文号；金额、概率、截止天数要保持自洽。\n"
                 f"formData:\n{payload}\n")
     return (f"Generate the full JSON for the support-policy search page from this formData.\n"
+            f"**Data must be matched based on the user's actual business registration info, not copied from sample policies;**\n"
             f"Requirements: policies must be dynamically matched to industry, location, headcount, capital and business scope; avoid fabricating exact document numbers; amounts, probabilities and deadline days must be internally consistent.\n"
             f"formData:\n{payload}\n")
 

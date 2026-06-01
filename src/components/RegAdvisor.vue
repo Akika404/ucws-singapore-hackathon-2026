@@ -7,6 +7,10 @@ import { sharedFormData } from '../store'
 
 const { t, tm, locale } = useI18n()
 
+const emit = defineEmits<{
+  openModule: [module: 'control']
+}>()
+
 export interface StepData {
   id: string
   title: string
@@ -160,6 +164,7 @@ function dotStyle(i: number) {
     :steps="steps"
     :form-data="formData"
     @restart="currentStep = 0; formData = { ...{ business: '', people: null, shareholder: null, companyType: '', namePref: '', name: '', scope: '', capital: '', address: '', org: '' } }; hasStarted = false"
+    @open-control="emit('openModule', 'control')"
   />
 
   <div v-else-if="steps.length" class="advisor-wrapper">

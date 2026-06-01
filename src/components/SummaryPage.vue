@@ -11,7 +11,10 @@ const props = defineProps<{
   formData: BaseFormData
 }>()
 
-const emit = defineEmits<{ restart: [] }>()
+const emit = defineEmits<{
+  restart: []
+  openControl: []
+}>()
 
 function getStepValue(stepId: string): string {
   const key = stepId === 'type' ? 'companyType' : stepId
@@ -110,6 +113,16 @@ function exportPdf() {
     <div class="footer-note">
       <span class="note-dot">💡</span>
       {{ t('summary.footer') }}
+    </div>
+
+    <div class="summary-next-actions no-print">
+      <button class="btn-next-module" @click="emit('openControl')">
+        <span>{{ t('summary.openCostEstimator') }}</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14" />
+          <path d="m13 6 6 6-6 6" />
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -381,6 +394,35 @@ function exportPdf() {
   line-height: 1.7;
 }
 .note-dot { flex-shrink: 0; }
+
+.summary-next-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 6px;
+}
+.btn-next-module {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid #91caff;
+  border-radius: 8px;
+  background: #1677ff;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.28);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+.btn-next-module:hover {
+  background: #0958d9;
+  box-shadow: 0 9px 24px rgba(22, 119, 255, 0.34);
+  transform: translateY(-1px);
+}
+.btn-next-module:active { transform: translateY(0); }
 
 /* ── Print ── */
 @media print {

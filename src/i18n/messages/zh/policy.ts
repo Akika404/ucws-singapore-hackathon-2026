@@ -54,6 +54,10 @@ export default {
   status: {
     loading: 'AI 正在检索扶持政策...',
     error: '扶持政策接口请求失败：{message}',
+    notSynced: '数据未同步',
+  },
+  next: {
+    openLegalAssistant: '前往法务合规与合同助手',
   },
   card: {
     maxPrefix: '最高预估',

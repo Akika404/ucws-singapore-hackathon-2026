@@ -8,6 +8,10 @@ import { apiFetch } from '../api/client'
 
 const { t, tm, locale } = useI18n()
 
+const emit = defineEmits<{
+  openModule: [module: 'policy']
+}>()
+
 Chart.register(...registerables)
 
 /* ---------------- 行业 / 成本矩阵 ---------------- */
@@ -44,7 +48,7 @@ const formState = reactive({
   shareholder: 3,
   province: 'beijing',
   companyType: 'llc',
-  namePref: '星禾云创',
+  namePref: '星禾云创科技有限公司',
   capital: 100,
   scopeMain: '软件开发',
   scopeOthers: '信息系统集成服务、技术服务、技术咨询、数据处理服务',
@@ -128,7 +132,7 @@ const linkedFields = computed(() => {
   if (typeof f.shareholder === 'number' && f.shareholder > 0 && !overridden.shareholder) arr.push(t('control.fieldTags.shareholder'))
   if (f.address && !overridden.province) arr.push(t('control.fieldTags.province'))
   if (f.companyType && !overridden.companyType) arr.push(t('control.fieldTags.companyType'))
-  if (f.namePref && !overridden.namePref) arr.push(t('control.fieldTags.namePref'))
+  if (f.name && !overridden.namePref) arr.push(t('control.fieldTags.namePref'))
   if (f.capital && !overridden.capital) arr.push(t('control.fieldTags.capital'))
   if (f.scope && typeof f.scope === 'object') {
     if (f.scope.main && !overridden.scopeMain) arr.push(t('control.fieldTags.scopeMain'))
@@ -145,7 +149,7 @@ function applyFromShared() {
   if (typeof f.shareholder === 'number' && f.shareholder > 0 && !overridden.shareholder) formState.shareholder = f.shareholder
   if (f.address && !overridden.province)          formState.province = matchProvince(f.address)
   if (f.companyType && !overridden.companyType)   formState.companyType = matchCompanyType(f.companyType)
-  if (f.namePref && !overridden.namePref)         formState.namePref = f.namePref
+  if (f.name && !overridden.namePref)             formState.namePref = f.name
   if (f.capital && !overridden.capital)           formState.capital = parseCapital(f.capital)
   if (f.scope && typeof f.scope === 'object') {
     if (f.scope.main && !overridden.scopeMain)    formState.scopeMain = f.scope.main
@@ -161,12 +165,10 @@ function resetLink() {
   applyFromShared()
 }
 
-const previewName = computed(() =>
-  t('control.previewName', {
-    name: formState.namePref,
-    suffix: formState.companyType === 'jsc' ? t('control.jscSuffix') : '',
-  }),
-)
+const displayName = computed(() => {
+  const linkedName = sharedFormData.value?.name?.trim()
+  return linkedName || 'null'
+})
 
 const setupVisible = ref(false)
 watch(isLinked, v => { setupVisible.value = !v }, { immediate: true })
@@ -222,7 +224,7 @@ function currentFormData() {
     shareholder: formState.shareholder,
     companyType: companyTypeLabel(formState.companyType),
     namePref: formState.namePref,
-    name: previewName.value,
+    name: formState.namePref || 'null',
     scope: {
       main: formState.scopeMain,
       others: formState.scopeOthers.split(/[、,，]/).map(s => s.trim()).filter(Boolean),
@@ -326,11 +328,19 @@ function categorySubtotal(cat: string) {
   return budgetData.value[cat]?.reduce((s, i) => s + i.money, 0) ?? 0
 }
 
+function pieTooltipLabel(ctx: any) {
+  const value = Number(ctx.raw) || 0
+  const data = (ctx.dataset?.data || []) as unknown[]
+  const total = data.reduce<number>((sum, item) => sum + (Number(item) || 0), 0)
+  const rawPct = total > 0 ? Math.round((value / total) * 100) : 0
+  const pct = Math.min(100, Math.max(0, rawPct))
+  return ` ${ctx.label}: ¥${value.toLocaleString(localeTag.value)} (${pct}%)`
+}
+
 function rebuildCharts() {
   const cats = categoryOrder
   const subtotals = cats.map(categorySubtotal)
   const benchSubtotals = cats.map(c => benchmark.value[c] ?? 0)
-  const total = subtotals.reduce((a, b) => a + b, 0)
 
   const pieLabels: string[] = []
   const pieData: number[] = []
@@ -361,11 +371,7 @@ function rebuildCharts() {
           legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } },
           tooltip: {
             callbacks: {
-              label: (ctx: any) => {
-                const v = ctx.raw as number
-                const pct = total > 0 ? Math.round((v / total) * 100) : 0
-                return ` ${ctx.label}: ¥${v.toLocaleString()} (${pct}%)`
-              },
+              label: pieTooltipLabel,
             },
           },
         },
@@ -444,7 +450,7 @@ onBeforeUnmount(() => {
 function exportCSV() {
   let csv = '﻿'
   csv += t('control.csv.reportTitle') + '\n'
-  csv += `${t('control.csv.fullName')},${previewName.value}\n`
+  csv += `${t('control.csv.fullName')},${displayName.value}\n`
   csv += `${t('control.csv.industryZone')},${industries.value[formState.industryIdx]}\n`
   csv += `${t('control.csv.regRegion')},${provinceLabel(formState.province)}\n`
   csv += `${t('control.csv.coreScale')},${formState.teamSize} ${t('control.csv.peopleUnit')}\n\n`
@@ -472,6 +478,20 @@ function exportCSV() {
 
 <template>
   <div class="ctrl-root">
+    <div v-if="loadingBudget" class="module-loading" role="status" aria-live="polite">
+      <div class="loading-core">
+        <span class="loading-ring" aria-hidden="true"></span>
+        <span class="loading-title">{{ t('control.status.loading') }}</span>
+      </div>
+    </div>
+
+    <div v-if="!isLinked" class="sync-float" aria-live="polite">
+      <div class="sync-pill">
+        <span class="sync-dot" aria-hidden="true"></span>
+        <span>{{ t('control.status.notSynced') }}</span>
+      </div>
+    </div>
+
     <!-- 顶部联动状态条 -->
     <div class="link-bar" :class="{ linked: isLinked && linkedFields.length }">
       <div class="link-left">
@@ -566,7 +586,7 @@ function exportCSV() {
     <div class="summary-card">
       <div class="sum-left">
         <div class="sum-name">
-          <span class="sum-title">{{ previewName }}</span>
+          <span class="sum-title">{{ displayName }}</span>
           <span class="sum-type">{{ companyTypeLabel(formState.companyType) }}</span>
           <button class="eye-btn" @click="setupVisible = !setupVisible" :title="setupVisible ? t('control.setup.collapse') : t('control.setup.expand')">
             <svg v-if="!setupVisible" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -598,9 +618,9 @@ function exportCSV() {
       </div>
     </div>
 
-    <div v-if="loadingBudget || budgetError" class="cfo-tip">
-      <span class="cfo-ico">{{ loadingBudget ? '⏳' : '⚠️' }}</span>
-      <span>{{ loadingBudget ? t('control.status.loading') : t('control.status.error', { message: budgetError }) }}</span>
+    <div v-if="budgetError" class="cfo-tip">
+      <span class="cfo-ico">⚠️</span>
+      <span>{{ t('control.status.error', { message: budgetError }) }}</span>
     </div>
 
     <!-- 图表 -->
@@ -686,11 +706,93 @@ function exportCSV() {
       <span class="ai-disclaimer-icon">⚠️</span>
       <p><b>{{ t('common.aiRiskTitle') }}</b>{{ t('common.aiRiskSep') }}{{ t('common.aiRiskDesc') }}</p>
     </div>
+
+    <div class="module-next-actions no-print">
+      <button class="btn-next-module" @click="emit('openModule', 'policy')">
+        <span>{{ t('control.next.openPolicyFinder') }}</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14" />
+          <path d="m13 6 6 6-6 6" />
+        </svg>
+      </button>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .ctrl-root { display: flex; flex-direction: column; gap: 20px; }
+
+.module-loading {
+  position: fixed;
+  left: calc(var(--sidebar-w) + 24px);
+  right: 12px;
+  top: 12px;
+  bottom: 12px;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 250, 252, 0.78);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+}
+.loading-core {
+  min-width: 280px;
+  min-height: 132px;
+  padding: 24px 32px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.loading-ring {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid #dbeafe;
+  border-top-color: var(--primary);
+  animation: spin 0.8s linear infinite;
+}
+.loading-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.sync-float {
+  position: fixed;
+  left: calc(var(--sidebar-w) + 24px);
+  right: 12px;
+  bottom: 24px;
+  z-index: 80;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  color: white;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+  font-size: 13px;
+  font-weight: 700;
+}
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* link bar */
 .link-bar {

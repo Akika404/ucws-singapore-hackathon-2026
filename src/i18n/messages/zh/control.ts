@@ -11,7 +11,7 @@ export default {
     shareholder: '股东人数',
     province: '注册区域',
     companyType: '公司类型',
-    namePref: '企业字号',
+    namePref: '完整公司名',
     capital: '认缴资本',
     scopeMain: '主营范围',
     scopeOthers: '兼营范围',
@@ -22,7 +22,7 @@ export default {
     shareholder: '股东人数 (shareholder)',
     province: '注册区域 (province)',
     companyType: '公司类型 (companyType)',
-    namePref: '企业字号 (namePref)',
+    namePref: '公司名称 (name)',
     capital: '认缴资本 (capital)',
     scopeMain: '主营经营范围 (scope.main)',
     scopeOthers: '兼营范围摘要 (scope.others)',
@@ -66,6 +66,10 @@ export default {
   status: {
     loading: 'AI 正在生成开业成本预估...',
     error: '开业成本接口请求失败：{message}',
+    notSynced: '数据未同步',
+  },
+  next: {
+    openPolicyFinder: '前往扶持政策检索',
   },
   cfoPre: '以上成本为基于行业矩阵的',
   cfoEmph: '模拟推演',

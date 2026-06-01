@@ -4,6 +4,7 @@ export default {
   subtitle: '根据您的选择定制生成，可导出为 PDF 存档备用',
   reconfigure: '重新配置',
   exportPdf: '导出 PDF',
+  openCostEstimator: '前往开业成本预估',
   fullFlowTitle: '完整注册流程',
   detailTitle: '注册方案详情',
   orgTitle: '组织架构设计',

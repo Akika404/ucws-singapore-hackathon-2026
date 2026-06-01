@@ -11,6 +11,7 @@ export default {
     generate: '生成名称建议',
     regenerate: '重新生成',
     generating: '正在生成名称建议...',
+    chooseHint: '请选择您的意向公司名称',
     customName: '自定义名称',
     customNamePlaceholder: '输入您已经取好的公司全称...',
     bizLabel: '主营业务',
@@ -27,6 +28,7 @@ export default {
     peopleLabel: '公司人数',
     peoplePlaceholder: '请输入公司人数',
     shareholderLabel: '股东人数',
+    shareholderHint: '如公司人数大于1人，股东人数需大于2人',
     shareholderPlaceholder: '请输入股东人数',
     unit: '人',
     loading: '正在为您推荐合适的公司类型...',
@@ -45,7 +47,7 @@ export default {
   // capital step
   capital: {
     intentionLabel: '意向投资金额',
-    intentionPlaceholder: '请输入认缴金额',
+    intentionPlaceholder: '请输入投资金额',
     unit: '万元',
     tip: '新公司法要求五年内完成实缴。',
     estimateLabel: '预估注册资本/认缴金额',

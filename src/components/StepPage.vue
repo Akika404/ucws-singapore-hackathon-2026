@@ -512,6 +512,7 @@ function goForward() {
         <div class="field-group">
           <div v-if="namesLoading" class="names-loading"><span class="spinner"></span> {{ t('step.name.generating') }}</div>
           <div v-if="suggestedNames.length" class="name-suggestions">
+            <div class="name-suggestions-hint">{{ t('step.name.chooseHint') }}</div>
             <button
               v-for="(name, i) in suggestedNames"
               :key="name"
@@ -594,6 +595,9 @@ function goForward() {
             <div class="pretty-control">
               <input v-model.number="shareholderCount" type="number" min="1" class="input pretty-input type-input" :placeholder="t('step.type.shareholderPlaceholder')" />
               <span class="pretty-suffix">{{ t('step.type.unit') }}</span>
+            </div>
+            <div v-if="(peopleCount ?? 0) > 1" class="type-shareholder-hint">
+              {{ t('step.type.shareholderHint') }}
             </div>
           </div>
         </div>
@@ -1035,6 +1039,15 @@ function goForward() {
   gap: 16px;
 }
 .type-input-row .field-group { flex: 1; min-width: 240px; }
+.type-shareholder-hint {
+  padding: 8px 10px;
+  border: 1px solid #ffe58f;
+  border-radius: 6px;
+  background: #fffbe6;
+  color: #8c6d1f;
+  font-size: 12px;
+  line-height: 1.5;
+}
 .type-loading,
 .type-error,
 .type-empty {
@@ -1458,6 +1471,13 @@ function goForward() {
   gap: 8px;
   margin-top: 4px;
 }
+.name-suggestions-hint {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
 .name-option {
   display: flex;
   align-items: center;
@@ -1493,18 +1513,24 @@ function goForward() {
 }
 .name-option.selected .name-option-index { background: var(--primary); color: white; }
 .name-option-label { flex: 1; font-size: 15px; font-weight: 600; color: var(--text); }
-.name-option--custom { grid-column: 1 / -1; align-items: stretch; padding: 12px 16px; }
+.name-option--custom { align-items: center; padding: 8px 16px; }
 .name-option--custom .name-option-index { font-size: 13px; }
 .name-option-custom-body {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
-.name-option-custom-body .name-option-label { font-size: 14px; }
+.name-option-custom-body .name-option-label {
+  flex: 0 0 auto;
+  font-size: 14px;
+  white-space: nowrap;
+}
 .custom-name-input {
-  width: 100%;
+  flex: 1;
+  width: auto;
+  min-width: 0;
   height: 36px;
   padding: 0 12px;
   border: 1px solid var(--border);

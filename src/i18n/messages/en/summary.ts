@@ -4,6 +4,7 @@ export default {
   subtitle: 'Tailored to your choices, exportable as PDF for your records',
   reconfigure: 'Reconfigure',
   exportPdf: 'Export PDF',
+  openCostEstimator: 'Open Startup Cost Estimator',
   fullFlowTitle: 'Full registration workflow',
   detailTitle: 'Registration plan details',
   orgTitle: 'Org structure design',

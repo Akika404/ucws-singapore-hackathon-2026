@@ -11,7 +11,7 @@ export default {
     shareholder: 'Shareholders',
     province: 'Region',
     companyType: 'Company type',
-    namePref: 'Brand name',
+    namePref: 'Full company name',
     capital: 'Capital',
     scopeMain: 'Main scope',
     scopeOthers: 'Other scope',
@@ -22,7 +22,7 @@ export default {
     shareholder: 'Shareholders (shareholder)',
     province: 'Region (province)',
     companyType: 'Company type (companyType)',
-    namePref: 'Brand name (namePref)',
+    namePref: 'Company name (name)',
     capital: 'Subscribed capital (capital)',
     scopeMain: 'Main business scope (scope.main)',
     scopeOthers: 'Other scope summary (scope.others)',
@@ -66,6 +66,10 @@ export default {
   status: {
     loading: 'AI is generating the opening cost estimate...',
     error: 'Opening cost API request failed: {message}',
+    notSynced: 'Data not synced',
+  },
+  next: {
+    openPolicyFinder: 'Open Incentive Policy Finder',
   },
   cfoPre: 'The costs above are a ',
   cfoEmph: 'simulation',

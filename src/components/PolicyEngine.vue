@@ -6,6 +6,10 @@ import { apiFetch } from '../api/client'
 
 const { t, tm, locale } = useI18n()
 
+const emit = defineEmits<{
+  openModule: [module: 'legal']
+}>()
+
 /* ---------------- 基础配置 ---------------- */
 
 // 行业（PolicyEngine 自有 9 项，与 A~T 不对齐）；仅展示，逻辑用 industryIdx
@@ -263,6 +267,10 @@ const matchedSum = computed(() =>
 const localeTag = computed(() => (locale.value === 'zh' ? 'zh-CN' : 'en-US'))
 
 const previewName = computed(() => t('policy.previewName', { name: formState.namePref || t('policy.unnamed') }))
+const displayName = computed(() => {
+  const linkedName = sharedFormData.value?.name?.trim()
+  return linkedName || 'null'
+})
 
 function setCategory(c: CategoryKey) { currentCategory.value = c }
 
@@ -295,6 +303,20 @@ function policyApplyLabel(policy: PolicyDef): string {
 
 <template>
   <div class="pol-root">
+    <div v-if="loadingPolicies" class="module-loading" role="status" aria-live="polite">
+      <div class="loading-core">
+        <span class="loading-ring" aria-hidden="true"></span>
+        <span class="loading-title">{{ t('policy.status.loading') }}</span>
+      </div>
+    </div>
+
+    <div v-if="!isLinked" class="sync-float" aria-live="polite">
+      <div class="sync-pill">
+        <span class="sync-dot" aria-hidden="true"></span>
+        <span>{{ t('policy.status.notSynced') }}</span>
+      </div>
+    </div>
+
     <!-- 顶部联动状态条 -->
     <div class="link-bar" :class="{ linked: isLinked && linkedFields.length }">
       <div class="link-left">
@@ -369,7 +391,7 @@ function policyApplyLabel(policy: PolicyDef): string {
     <div class="summary-card">
       <div class="sum-left">
         <div class="sum-name">
-          <span class="sum-title">{{ previewName }}</span>
+          <span class="sum-title">{{ displayName }}</span>
           <button class="eye-btn" @click="setupVisible = !setupVisible" :title="setupVisible ? t('policy.summary.collapse') : t('policy.summary.expand')">
             <svg v-if="!setupVisible" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
@@ -406,9 +428,8 @@ function policyApplyLabel(policy: PolicyDef): string {
       </div>
     </div>
 
-    <div v-if="loadingPolicies || policyError" class="ready-strip">
-      <span class="ready-text">{{ loadingPolicies ? t('policy.status.loading') : t('policy.status.error', { message: policyError }) }}</span>
-      <span v-if="loadingPolicies" class="ready-pulse"><span /><span /><span /></span>
+    <div v-if="policyError" class="ready-strip">
+      <span class="ready-text">{{ t('policy.status.error', { message: policyError }) }}</span>
     </div>
 
     <!-- 分类与控制台 -->
@@ -523,11 +544,93 @@ function policyApplyLabel(policy: PolicyDef): string {
       <span class="ai-disclaimer-icon">⚠️</span>
       <p><b>{{ t('common.aiRiskTitle') }}</b>{{ t('common.aiRiskSep') }}{{ t('common.aiRiskDesc') }}</p>
     </div>
+
+    <div class="module-next-actions no-print">
+      <button class="btn-next-module" @click="emit('openModule', 'legal')">
+        <span>{{ t('policy.next.openLegalAssistant') }}</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14" />
+          <path d="m13 6 6 6-6 6" />
+        </svg>
+      </button>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .pol-root { display: flex; flex-direction: column; gap: 20px; }
+
+.module-loading {
+  position: fixed;
+  left: calc(var(--sidebar-w) + 24px);
+  right: 12px;
+  top: 12px;
+  bottom: 12px;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 250, 252, 0.78);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+}
+.loading-core {
+  min-width: 280px;
+  min-height: 132px;
+  padding: 24px 32px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.loading-ring {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid #dbeafe;
+  border-top-color: var(--primary);
+  animation: spin 0.8s linear infinite;
+}
+.loading-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.sync-float {
+  position: fixed;
+  left: calc(var(--sidebar-w) + 24px);
+  right: 12px;
+  bottom: 24px;
+  z-index: 80;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  color: white;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+  font-size: 13px;
+  font-weight: 700;
+}
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* link bar (与 ControlSandbox 一致) */
 .link-bar {

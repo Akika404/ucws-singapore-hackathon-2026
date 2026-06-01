@@ -30,6 +30,9 @@ const moduleComponents: Record<ModuleId, Component> = {
 }
 const cachedModules = ['RegAdvisor', 'ControlSandbox', 'PolicyEngine']
 const currentComponent = computed(() => moduleComponents[currentModule.value] ?? LegalAssistant)
+function openModule(module: ModuleId) {
+  currentModule.value = module
+}
 
 const langs: { id: Lang; label: string }[] = [
   { id: 'en', label: t('app.lang.en') },
@@ -76,7 +79,7 @@ const langs: { id: Lang; label: string }[] = [
     </header>
     <main class="content-area">
       <KeepAlive :include="cachedModules">
-        <component :is="currentComponent" />
+        <component :is="currentComponent" @open-module="openModule" />
       </KeepAlive>
     </main>
   </div>

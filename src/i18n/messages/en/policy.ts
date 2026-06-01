@@ -54,6 +54,10 @@ export default {
   status: {
     loading: 'AI is searching support policies...',
     error: 'Support policy API request failed: {message}',
+    notSynced: 'Data not synced',
+  },
+  next: {
+    openLegalAssistant: 'Open Legal & Contract Assistant',
   },
   card: {
     maxPrefix: 'Max estimated',
