@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { StepData, BaseFormData } from './RegAdvisor.vue'
+import OrgStructureCards from './OrgStructureCards.vue'
 
 const { t } = useI18n()
 
@@ -11,9 +12,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ restart: [] }>()
-
-// 公司人数为 1 人时展示 image_2，否则展示 image_1
-const orgImage = computed(() => (props.formData.people === 1 ? '/image_2.png' : '/image_1.png'))
 
 function getStepValue(stepId: string): string {
   const key = stepId === 'type' ? 'companyType' : stepId
@@ -104,9 +102,7 @@ function exportPdf() {
       <!-- org chart -->
       <div class="org-panel">
         <div class="panel-title">{{ t('summary.orgTitle') }}</div>
-        <div class="org-img-wrap">
-          <img :src="orgImage" :alt="t('summary.orgAlt')" class="org-img" />
-        </div>
+        <OrgStructureCards :people="formData.people" compact />
       </div>
     </div>
 
@@ -212,22 +208,6 @@ function exportPdf() {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-/* ── Org panel: constrain image width so it doesn't stretch full-width ── */
-.org-img-wrap {
-  padding: 20px;
-  background: #f8fafc;
-  display: flex;
-  justify-content: center;
-}
-.org-img {
-  display: block;
-  max-width: 760px;
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid var(--border-light);
-  object-fit: contain;
 }
 
 /* ── Shared panel ── */
@@ -442,7 +422,5 @@ function exportPdf() {
   .flow-head { gap: 3px; margin-bottom: 4px; }
   .flow-title { font-size: 9.5px; }
   .flow-desc { font-size: 8px; line-height: 1.35; }
-  /* Keep enlarged org image within a single page */
-  .org-img { max-width: 100%; max-height: 360px; }
 }
 </style>

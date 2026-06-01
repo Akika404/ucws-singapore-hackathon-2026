@@ -5,6 +5,7 @@ import type { StepData, BaseFormData } from './RegAdvisor.vue'
 import { apiFetch } from '../api/client'
 import { INDUSTRIES as INDUSTRIES_DATA, PROVINCES_FULL } from '../i18n/data'
 import type { Lang } from '../i18n'
+import OrgStructureCards from './OrgStructureCards.vue'
 
 const { t, locale } = useI18n()
 
@@ -47,8 +48,6 @@ interface CompanyTypeRecommendation {
 const peopleCount = ref<number | null>(props.formData.people ?? null)
 const shareholderCount = ref<number | null>(props.formData.shareholder ?? null)
 
-// 公司人数为 1 人时展示 image_2，否则展示 image_1
-const orgImage = computed(() => (peopleCount.value === 1 ? '/image_2.png' : '/image_1.png'))
 const typeLoading = ref(false)
 const typeError = ref('')
 const typeRecommendation = ref<CompanyTypeRecommendation | null>(null)
@@ -714,9 +713,7 @@ function goForward() {
       </div>
 
       <div v-else-if="step.id === 'org'" class="org-step">
-        <div class="org-image-wrap">
-          <img class="org-image" :src="orgImage" :alt="t('step.org.imageAlt')" />
-        </div>
+        <OrgStructureCards :people="peopleCount" />
         <div class="org-tips">
           <span class="org-tips-label">{{ t('step.org.tipsLabel') }}</span>
           <span v-if="orgTipsLoading" class="org-tips-text muted"><span class="spinner"></span> {{ t('step.org.generating') }}</span>
@@ -1308,19 +1305,6 @@ function goForward() {
 
 /* org step */
 .org-step { display: flex; flex-direction: column; gap: 16px; }
-.org-image-wrap {
-  overflow: hidden;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: #fafafa;
-}
-.org-image {
-  display: block;
-  width: 100%;
-  max-height: 460px;
-  object-fit: contain;
-  background: white;
-}
 .org-tips {
   display: flex;
   align-items: flex-start;
