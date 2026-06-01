@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, reactive } 
 import { useI18n } from 'vue-i18n'
 import { Chart, registerables } from 'chart.js'
 import type { ChartType } from 'chart.js'
-import { sharedFormData } from '../store'
+import { hasUsableRegistrationData, sharedFormData } from '../store'
 import { apiFetch } from '../api/client'
 
 const { t, tm, locale } = useI18n()
@@ -117,7 +117,7 @@ function parseCapital(c: string): number {
   return m ? Math.round(parseFloat(m[1])) : 100
 }
 
-const isLinked = computed(() => !!sharedFormData.value)
+const isLinked = computed(() => hasUsableRegistrationData(sharedFormData.value))
 
 const linkedFields = computed(() => {
   const f = sharedFormData.value
@@ -201,9 +201,21 @@ const budgetError = ref('')
 const cardLocked = reactive<Record<string, boolean>>({})
 categoryOrder.forEach(c => (cardLocked[c] = true))
 
+function clearOpeningCost() {
+  const next: BudgetByCategory = {}
+  const bench: Record<string, number> = {}
+  categoryOrder.forEach(c => { next[c] = []; bench[c] = 0 })
+  budgetData.value = next
+  benchmark.value = bench
+  aiSummary.value = ''
+  aiTips.value = []
+}
+
+clearOpeningCost()
+
 function currentFormData() {
   const f = sharedFormData.value
-  if (f) return f
+  if (hasUsableRegistrationData(f)) return f
   return {
     business: `(${String.fromCharCode(65 + formState.industryIdx)}) ${industries.value[formState.industryIdx] ?? ''}`,
     people: formState.teamSize,
@@ -264,10 +276,21 @@ async function fetchOpeningCost() {
 let budgetFetchDebounce: number | null = null
 function scheduleOpeningCostFetch() {
   if (budgetFetchDebounce) clearTimeout(budgetFetchDebounce)
+  if (!isLinked.value) {
+    budgetRequestSeq++
+    loadingBudget.value = false
+    budgetError.value = ''
+    clearOpeningCost()
+    return
+  }
   budgetFetchDebounce = window.setTimeout(fetchOpeningCost, 350)
 }
 
-watch(() => ({ ...formState, lang: locale.value }), scheduleOpeningCostFetch, { immediate: true })
+watch(
+  () => ({ form: { ...formState }, shared: sharedFormData.value, lang: locale.value }),
+  scheduleOpeningCostFetch,
+  { deep: true, immediate: true },
+)
 
 const totalBudget = computed(() =>
   categoryOrder.reduce((s, c) =>
@@ -406,7 +429,7 @@ watch([budgetData, benchmark], () => {
 watch(locale, () => {
   pie?.destroy(); radar?.destroy(); bar?.destroy()
   pie = radar = bar = null
-  scheduleOpeningCostFetch()
+  if (isLinked.value) scheduleOpeningCostFetch()
   nextTick(rebuildCharts)
 })
 

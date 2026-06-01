@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { sharedFormData } from '../store'
+import { hasUsableRegistrationData, sharedFormData } from '../store'
 import { apiFetch } from '../api/client'
 
 const { t, tm, locale } = useI18n()
@@ -131,7 +131,7 @@ function parseCapital(c: string): number {
   return m ? Math.round(parseFloat(m[1])) : 150
 }
 
-const isLinked = computed(() => !!sharedFormData.value)
+const isLinked = computed(() => hasUsableRegistrationData(sharedFormData.value))
 
 const linkedFields = computed(() => {
   const f = sharedFormData.value
@@ -177,7 +177,7 @@ const currentSort = ref<SortMethod>('priority')
 
 function currentFormData() {
   const f = sharedFormData.value
-  if (f) return f
+  if (hasUsableRegistrationData(f)) return f
   return {
     business: industries.value[formState.industryIdx] ?? '',
     people: formState.teamSize,
@@ -219,10 +219,23 @@ async function fetchSupportPolicies() {
 let policyFetchDebounce: number | null = null
 function schedulePolicyFetch() {
   if (policyFetchDebounce) clearTimeout(policyFetchDebounce)
+  if (!isLinked.value) {
+    policyRequestSeq++
+    loadingPolicies.value = false
+    policyError.value = ''
+    policyDatabase.value = []
+    policySummary.value = ''
+    policyTips.value = []
+    return
+  }
   policyFetchDebounce = window.setTimeout(fetchSupportPolicies, 350)
 }
 
-watch(() => ({ ...formState, lang: locale.value }), schedulePolicyFetch, { immediate: true })
+watch(
+  () => ({ form: { ...formState }, shared: sharedFormData.value, lang: locale.value }),
+  schedulePolicyFetch,
+  { deep: true, immediate: true },
+)
 
 const matchedPolicies = computed<PolicyDef[]>(() => {
   const list: PolicyDef[] = []
