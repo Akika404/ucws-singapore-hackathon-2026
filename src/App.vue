@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import type { Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { setLocale, type Lang } from './i18n'
 import RegAdvisor from './components/RegAdvisor.vue'
@@ -19,6 +20,16 @@ const modules = computed<{ id: ModuleId; label: string; icon: string }[]>(() => 
   { id: 'legal', label: t('app.module.legal'), icon: '⚖️' },
 ])
 const currentLabel = computed(() => modules.value.find(m => m.id === currentModule.value)?.label)
+
+const moduleComponents: Record<ModuleId, Component> = {
+  reg: RegAdvisor,
+  finance: FinanceSandbox,
+  control: ControlSandbox,
+  legal: LegalAssistant,
+  policy: PolicyEngine,
+}
+const cachedModules = ['RegAdvisor', 'ControlSandbox', 'PolicyEngine']
+const currentComponent = computed(() => moduleComponents[currentModule.value] ?? LegalAssistant)
 
 const langs: { id: Lang; label: string }[] = [
   { id: 'en', label: t('app.lang.en') },
@@ -64,11 +75,9 @@ const langs: { id: Lang; label: string }[] = [
       {{ currentLabel }}
     </header>
     <main class="content-area">
-      <RegAdvisor v-if="currentModule === 'reg'" />
-      <FinanceSandbox v-else-if="currentModule === 'finance'" />
-      <ControlSandbox v-else-if="currentModule === 'control'" />
-      <PolicyEngine v-else-if="currentModule === 'policy'" />
-      <LegalAssistant v-else />
+      <KeepAlive :include="cachedModules">
+        <component :is="currentComponent" />
+      </KeepAlive>
     </main>
   </div>
 </template>
