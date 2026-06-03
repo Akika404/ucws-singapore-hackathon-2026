@@ -37,7 +37,7 @@ function httpsProxyPlugin() {
       const httpsServer = https.createServer(
         { key: keyPem, cert: certPem },
         (req: any, res: any) => {
-          proxy.web(req, res, () => {
+          proxy.web(req, res, {}, () => {
             res.writeHead(502)
             res.end('Bad Gateway')
           })
